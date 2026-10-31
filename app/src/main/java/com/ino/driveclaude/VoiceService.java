@@ -68,7 +68,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     private boolean stopAfterSpeech;
     private int silent;
     private int uttSeq;
-    private final List<String[]> transcript = new ArrayList<>();
+    private final List<String[]> transcript = java.util.Collections.synchronizedList(new ArrayList<>());
     private long sessionStartMs;
 
     // ---------- lifecycle ----------
@@ -370,55 +370,79 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
 
     /** 会話が2往復以上あれば、終了時にまとめを作って保存する（記憶も更新）。 */
     private void summarizeAsync() {
-        int turns = 0;
-        for (String[] t : transcript) if ("ユーザー".equals(t[0])) turns++;
-        if (turns < 2 || prefs.apiKey().isEmpty()) return;
-        final StringBuilder sb = new StringBuilder();
-        final JSONArray tr = new JSONArray();
-        for (String[] t : transcript) {
+        final List<String[]> copy;
+        final long startMs;
+        synchronized (transcript) {
+            int turns = 0;
+            for (String[] t : transcript) if ("ユーザー".equals(t[0])) turns++;
+            if (turns < 2 || prefs.apiKey().isEmpty()) return;
+            copy = new ArrayList<>(transcript);
+            transcript.clear();
+            startMs = sessionStartMs > 0 ? sessionStartMs : System.currentTimeMillis();
+            sessionStartMs = 0;
+        }
+        final android.content.Context app = getApplicationContext();
+        log("sys", "会話のまとめを作成中…");
+        new Thread(() -> log("sys", saveSummary(app, copy, startMs, new Prefs(app).calendarSync()))).start();
+    }
+
+    /** 声の指示「Claudeに送って」: ここまでの会話をまとめてカレンダー（=Claudeのチャットから読める場所）に保存する。 */
+    static String sendNowFromTool(android.content.Context app) {
+        VoiceService v = instance;
+        if (v == null) return "会話中ではありません";
+        final List<String[]> copy;
+        final long startMs;
+        synchronized (v.transcript) {
+            if (v.transcript.isEmpty()) return "送る会話がまだありません";
+            copy = new ArrayList<>(v.transcript);
+            v.transcript.clear();
+            startMs = v.sessionStartMs > 0 ? v.sessionStartMs : System.currentTimeMillis();
+            v.sessionStartMs = 0;
+        }
+        String r = saveSummary(app, copy, startMs, true);
+        v.log("sys", r);
+        return r;
+    }
+
+    /** まとめを作り、記録・記憶・（必要なら）カレンダーに保存して結果メッセージを返す。 */
+    private static String saveSummary(android.content.Context app, List<String[]> copy, long startMs, boolean toCalendar) {
+        Prefs pr = new Prefs(app);
+        StringBuilder sb = new StringBuilder();
+        JSONArray tr = new JSONArray();
+        for (String[] t : copy) {
             sb.append(t[0]).append(": ").append(t[1]).append('\n');
             try { tr.put(new JSONObject().put("who", t[0]).put("text", t[1])); } catch (Exception ignored) { }
         }
-        transcript.clear();
-        final android.content.Context app = getApplicationContext();
-        final Prefs pr = new Prefs(app);
-        final String started = Store.now();
-        final long startMs = sessionStartMs > 0 ? sessionStartMs : System.currentTimeMillis();
-        log("sys", "会話のまとめを作成中…");
-        new Thread(() -> {
-            try {
-                JSONObject r = Claude.summarize(app, pr, sb.toString());
-                JSONObject session = new JSONObject()
-                        .put("time", started)
-                        .put("title", r.optString("title", "会話"))
-                        .put("summary", r.optString("summary"))
-                        .put("decisions", r.optJSONArray("decisions") == null ? new JSONArray() : r.optJSONArray("decisions"))
-                        .put("todos", r.optJSONArray("todos") == null ? new JSONArray() : r.optJSONArray("todos"))
-                        .put("transcript", tr);
-                Store.addSession(app, session);
-                JSONArray facts = r.optJSONArray("facts");
-                if (facts != null) for (int i = 0; i < facts.length(); i++) {
-                    String f = facts.optString(i).trim();
-                    if (!f.isEmpty()) Store.addMemory(app, f);
-                }
-                String calMsg = null;
-                if (pr.calendarSync()) {
-                    StringBuilder d = new StringBuilder();
-                    d.append("【要点】\n").append(session.optString("summary")).append("\n");
-                    JSONArray dec = session.optJSONArray("decisions");
-                    if (dec != null && dec.length() > 0) { d.append("\n【決めたこと】\n"); for (int i = 0; i < dec.length(); i++) d.append("・").append(dec.optString(i)).append("\n"); }
-                    JSONArray td = session.optJSONArray("todos");
-                    if (td != null && td.length() > 0) { d.append("\n【やること】\n"); for (int i = 0; i < td.length(); i++) d.append("・").append(td.optString(i)).append("\n"); }
-                    d.append("\n【会話全文】\n").append(sb);
-                    calMsg = Tools.addSummaryEvent(app, session.optString("title"), d.toString(), startMs);
-                }
-                log("sys", calMsg != null ? "会話のまとめを保存しました（" + calMsg + "）"
-                        : pr.calendarSync() ? "会話のまとめを保存し、Googleカレンダーにも記録しました"
-                        : "会話のまとめを保存しました（📝記録 で見られます）");
-            } catch (Exception e) {
-                log("sys", "まとめの作成に失敗しました: " + e.getMessage());
+        try {
+            JSONObject r = Claude.summarize(app, pr, sb.toString());
+            java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.JAPAN);
+            JSONObject session = new JSONObject()
+                    .put("time", f.format(new java.util.Date(startMs)))
+                    .put("title", r.optString("title", "会話"))
+                    .put("summary", r.optString("summary"))
+                    .put("decisions", r.optJSONArray("decisions") == null ? new JSONArray() : r.optJSONArray("decisions"))
+                    .put("todos", r.optJSONArray("todos") == null ? new JSONArray() : r.optJSONArray("todos"))
+                    .put("transcript", tr);
+            Store.addSession(app, session);
+            JSONArray facts = r.optJSONArray("facts");
+            if (facts != null) for (int i = 0; i < facts.length(); i++) {
+                String fct = facts.optString(i).trim();
+                if (!fct.isEmpty()) Store.addMemory(app, fct);
             }
-        }).start();
+            if (!toCalendar) return "会話のまとめを保存しました（📝記録 で見られます）";
+            StringBuilder d = new StringBuilder();
+            d.append("【要点】\n").append(session.optString("summary")).append("\n");
+            JSONArray dec = session.optJSONArray("decisions");
+            if (dec != null && dec.length() > 0) { d.append("\n【決めたこと】\n"); for (int i = 0; i < dec.length(); i++) d.append("・").append(dec.optString(i)).append("\n"); }
+            JSONArray td = session.optJSONArray("todos");
+            if (td != null && td.length() > 0) { d.append("\n【やること】\n"); for (int i = 0; i < td.length(); i++) d.append("・").append(td.optString(i)).append("\n"); }
+            d.append("\n【会話全文】\n").append(sb);
+            String err = Tools.addSummaryEvent(app, session.optString("title"), d.toString(), startMs);
+            return err != null ? "会話のまとめを保存しました（" + err + "）"
+                    : "「" + session.optString("title") + "」のまとめをClaudeのチャット用にGoogleカレンダーへ送りました";
+        } catch (Exception e) {
+            return "まとめの作成に失敗しました: " + e.getMessage();
+        }
     }
 
     private void dropLastUser() {

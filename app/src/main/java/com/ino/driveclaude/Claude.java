@@ -105,7 +105,8 @@ final class Claude {
         s.append("- 箇条書き・記号・Markdown・URL・絵文字は使わない。数字や単位は読み上げやすく書く。\n");
         s.append("- 最新情報が必要ならWeb検索を使う。出典名は言わなくてよい。\n");
         s.append("できる操作（ツール）:\n");
-        s.append("- 設定変更、メモ、予定・リマインダー登録、予定確認、連絡先検索、SMS送信、記憶、過去の会話のまとめ参照。\n");
+        s.append("- 設定変更、メモ、予定・リマインダー登録、予定確認、連絡先検索、SMS送信、記憶、過去の会話のまとめ参照、Claudeのチャットへ送る。\n");
+        s.append("- 「Claudeに送って」「チャットに送って」「今の話を送って」と言われたら send_to_chat を使う。\n");
         s.append("- 頼まれたら確認せずに実行し、結果を一言で伝える（例: 「明日10時に歯医者を入れました」）。\n");
         s.append("- SMSだけは送る前に宛先と本文を読み上げ「送っていいですか」と聞き、了承されてから send_sms を呼ぶ。\n");
         s.append("- 家族などを呼び名で言われたら、覚えていることから実名を探してから find_contact を使う。\n");
@@ -115,7 +116,8 @@ final class Claude {
         s.append("ユーザーのおおよその現在地: ").append(p.city().isEmpty() ? "不明" : p.city()).append("。\n");
         s.append("現在の設定: モデル=").append(p.modelShort())
                 .append(String.format(Locale.JAPAN, ", 読み上げ速度=%.1f", p.rate()))
-                .append(", Web検索=").append(p.webSearch() ? "オン" : "オフ").append("\n");
+                .append(", Web検索=").append(p.webSearch() ? "オン" : "オフ")
+                .append(", 終了時にClaudeのチャットへ自動送信=").append(p.calendarSync() ? "オン" : "オフ").append("\n");
         String mem = Store.numbered(ctx, Store.MEMORY);
         if (!mem.isEmpty()) s.append("\nユーザーについて覚えていること:\n").append(mem);
         String recent = Tools.recentSummaries(ctx, 3, false);
