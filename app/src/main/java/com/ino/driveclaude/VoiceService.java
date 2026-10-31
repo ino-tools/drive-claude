@@ -68,6 +68,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     private boolean stopAfterSpeech;
     private int silent;
     private int uttSeq;
+    private final List<String[]> transcript = new ArrayList<>();
 
     // ---------- lifecycle ----------
 
@@ -140,6 +141,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     }
 
     void stopAll() {
+        if (running) summarizeAsync();
         running = false;
         h.removeCallbacksAndMessages(null);
         if (sr != null) { try { sr.cancel(); } catch (Exception ignored) { } }
@@ -301,10 +303,11 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     private void handleUtterance(String text) {
         silent = 0;
         log("me", text);
+        transcript.add(new String[]{"ユーザー", text});
 
         if (STOP_WORDS.matcher(text).matches()) {
             stopAfterSpeech = true;
-            speak("終了します。安全運転で。");
+            speak("終了します。");
             return;
         }
         if (RESET_WORDS.matcher(text).matches()) {
@@ -329,13 +332,14 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
         }
         ex.submit(() -> {
             try {
-                String reply = Claude.ask(prefs, snapshot);
+                String reply = Claude.ask(getApplicationContext(), prefs, snapshot);
                 if (reply.isEmpty()) reply = "すみません、うまく答えられませんでした。";
                 final String fr = reply;
                 h.post(() -> {
                     if (!running) return;
                     try { history.put(new JSONObject().put("role", "assistant").put("content", fr)); } catch (Exception ignored) { }
                     log("ai", fr);
+                    transcript.add(new String[]{"Claude", fr});
                     speak(fr);
                 });
             } catch (Claude.ApiException e) {
@@ -360,6 +364,45 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
                 });
             }
         });
+    }
+
+    /** 会話が2往復以上あれば、終了時にまとめを作って保存する（記憶も更新）。 */
+    private void summarizeAsync() {
+        int turns = 0;
+        for (String[] t : transcript) if ("ユーザー".equals(t[0])) turns++;
+        if (turns < 2 || prefs.apiKey().isEmpty()) return;
+        final StringBuilder sb = new StringBuilder();
+        final JSONArray tr = new JSONArray();
+        for (String[] t : transcript) {
+            sb.append(t[0]).append(": ").append(t[1]).append('\n');
+            try { tr.put(new JSONObject().put("who", t[0]).put("text", t[1])); } catch (Exception ignored) { }
+        }
+        transcript.clear();
+        final android.content.Context app = getApplicationContext();
+        final Prefs pr = new Prefs(app);
+        final String started = Store.now();
+        log("sys", "会話のまとめを作成中…");
+        new Thread(() -> {
+            try {
+                JSONObject r = Claude.summarize(app, pr, sb.toString());
+                JSONObject session = new JSONObject()
+                        .put("time", started)
+                        .put("title", r.optString("title", "会話"))
+                        .put("summary", r.optString("summary"))
+                        .put("decisions", r.optJSONArray("decisions") == null ? new JSONArray() : r.optJSONArray("decisions"))
+                        .put("todos", r.optJSONArray("todos") == null ? new JSONArray() : r.optJSONArray("todos"))
+                        .put("transcript", tr);
+                Store.addSession(app, session);
+                JSONArray facts = r.optJSONArray("facts");
+                if (facts != null) for (int i = 0; i < facts.length(); i++) {
+                    String f = facts.optString(i).trim();
+                    if (!f.isEmpty()) Store.addMemory(app, f);
+                }
+                log("sys", "会話のまとめを保存しました（📝記録 で見られます）");
+            } catch (Exception e) {
+                log("sys", "まとめの作成に失敗しました: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void dropLastUser() {

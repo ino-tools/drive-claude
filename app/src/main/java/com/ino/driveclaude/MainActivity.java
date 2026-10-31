@@ -64,7 +64,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         List<String[]> copy;
         synchronized (VoiceService.logBuf) { copy = new ArrayList<>(VoiceService.logBuf); }
         if (copy.isEmpty()) {
-            addLog("sys", "「開始」を押すとハンズフリーで会話が続きます。「ストップ」で終了、「リセット」で会話を最初から。ナビなど他のアプリを開いても会話は続きます。");
+            addLog("sys", "「開始」を押すとハンズフリーで会話が続きます。「ストップ」で終了、「リセット」で会話を最初から。\n「明日10時に歯医者を予定に入れて」「〇〇をメモして」「もっと速く読んで」なども声でできます。");
         }
         for (String[] l : copy) addLog(l[0], l[1]);
         onState(VoiceService.instance == null ? "stopped" : VoiceService.curState,
@@ -117,6 +117,12 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         title.setTextSize(20);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        Button notes = flatButton("📝 記録");
+        notes.setTextSize(15);
+        notes.setOnClickListener(v -> startActivity(new Intent(this, NotesActivity.class)));
+        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44));
+        nlp.rightMargin = dp(8);
+        header.addView(notes, nlp);
         Button settings = flatButton("⚙ 設定");
         settings.setTextSize(15);
         settings.setOnClickListener(v -> showSettings());
@@ -248,6 +254,14 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             need.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        if (!prefs.askedOptional()) {
+            // 予定・連絡先・SMSの操作用（初回だけ聞く。拒否しても会話はできる）
+            prefs.setAskedOptional();
+            for (String perm : new String[]{Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR,
+                    Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS}) {
+                if (checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED) need.add(perm);
+            }
         }
         if (!need.isEmpty()) {
             pendingStart = true;
