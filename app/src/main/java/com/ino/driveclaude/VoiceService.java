@@ -69,6 +69,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     private int silent;
     private int uttSeq;
     private final List<String[]> transcript = new ArrayList<>();
+    private long sessionStartMs;
 
     // ---------- lifecycle ----------
 
@@ -303,6 +304,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     private void handleUtterance(String text) {
         silent = 0;
         log("me", text);
+        if (transcript.isEmpty()) sessionStartMs = System.currentTimeMillis();
         transcript.add(new String[]{"ユーザー", text});
 
         if (STOP_WORDS.matcher(text).matches()) {
@@ -381,6 +383,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
         final android.content.Context app = getApplicationContext();
         final Prefs pr = new Prefs(app);
         final String started = Store.now();
+        final long startMs = sessionStartMs > 0 ? sessionStartMs : System.currentTimeMillis();
         log("sys", "会話のまとめを作成中…");
         new Thread(() -> {
             try {
@@ -398,7 +401,20 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
                     String f = facts.optString(i).trim();
                     if (!f.isEmpty()) Store.addMemory(app, f);
                 }
-                log("sys", "会話のまとめを保存しました（📝記録 で見られます）");
+                String calMsg = null;
+                if (pr.calendarSync()) {
+                    StringBuilder d = new StringBuilder();
+                    d.append("【要点】\n").append(session.optString("summary")).append("\n");
+                    JSONArray dec = session.optJSONArray("decisions");
+                    if (dec != null && dec.length() > 0) { d.append("\n【決めたこと】\n"); for (int i = 0; i < dec.length(); i++) d.append("・").append(dec.optString(i)).append("\n"); }
+                    JSONArray td = session.optJSONArray("todos");
+                    if (td != null && td.length() > 0) { d.append("\n【やること】\n"); for (int i = 0; i < td.length(); i++) d.append("・").append(td.optString(i)).append("\n"); }
+                    d.append("\n【会話全文】\n").append(sb);
+                    calMsg = Tools.addSummaryEvent(app, session.optString("title"), d.toString(), startMs);
+                }
+                log("sys", calMsg != null ? "会話のまとめを保存しました（" + calMsg + "）"
+                        : pr.calendarSync() ? "会話のまとめを保存し、Googleカレンダーにも記録しました"
+                        : "会話のまとめを保存しました（📝記録 で見られます）");
             } catch (Exception e) {
                 log("sys", "まとめの作成に失敗しました: " + e.getMessage());
             }

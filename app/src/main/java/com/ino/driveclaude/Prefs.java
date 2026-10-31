@@ -21,6 +21,8 @@ final class Prefs {
     float rate() { return sp.getFloat("rate", 1.2f); }
     String city() { return sp.getString("city", "名古屋").trim(); }
     String extra() { return sp.getString("extra", "").trim(); }
+    boolean calendarSync() { return sp.getBoolean("calendarSync", true); }
+    void setCalendarSync(boolean b) { sp.edit().putBoolean("calendarSync", b).apply(); }
     boolean askedOptional() { return sp.getBoolean("askedOptional", false); }
 
     String modelShort() {

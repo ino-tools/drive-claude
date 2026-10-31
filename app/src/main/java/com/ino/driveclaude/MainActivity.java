@@ -349,6 +349,12 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         auto.setChecked(prefs.autoStart());
         box.addView(auto);
 
+        CheckBox cal = new CheckBox(this);
+        cal.setText("会話のまとめをGoogleカレンダーにも保存（Claudeのチャットから読めます）");
+        cal.setTextColor(C_FG);
+        cal.setChecked(prefs.calendarSync());
+        box.addView(cal);
+
         final TextView rateLabel = label("");
         box.addView(rateLabel);
         SeekBar rate = new SeekBar(this);
@@ -386,6 +392,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
                     String k = key.getText().toString().trim();
                     prefs.save(k, Prefs.MODEL_IDS[idx], web.isChecked(), auto.isChecked(),
                             0.8f + rate.getProgress() / 10f, city.getText().toString(), extra.getText().toString());
+                    prefs.setCalendarSync(cal.isChecked());
                     if (!k.isEmpty() && !k.startsWith("sk-ant-api")) {
                         addLog("sys", "注意: APIキーは通常 sk-ant-api03- で始まります。console.anthropic.com の API Keys で発行したキーか確認してください。");
                     } else {

@@ -256,6 +256,28 @@ final class Tools {
         return sb.length() == 0 ? "予定はありません" : sb.toString();
     }
 
+    /** 会話のまとめをGoogleカレンダーに「会話まとめ」の予定として保存する（通知なし・予定なし扱い）。 */
+    static String addSummaryEvent(Context c, String title, String description, long startMs) {
+        if (!granted(c, Manifest.permission.WRITE_CALENDAR) || !granted(c, Manifest.permission.READ_CALENDAR)) {
+            return "カレンダーの権限がないため、まとめをカレンダーに保存できませんでした";
+        }
+        ContentResolver cr = c.getContentResolver();
+        long calId = findCalendar(cr);
+        if (calId < 0) return "書き込めるカレンダーが見つからず、まとめをカレンダーに保存できませんでした";
+        if (description.length() > 7000) description = description.substring(0, 7000) + "\n…（以下省略）";
+        ContentValues v = new ContentValues();
+        v.put(CalendarContract.Events.CALENDAR_ID, calId);
+        v.put(CalendarContract.Events.TITLE, "🚗 会話まとめ：" + title);
+        v.put(CalendarContract.Events.DESCRIPTION, description);
+        v.put(CalendarContract.Events.DTSTART, startMs);
+        v.put(CalendarContract.Events.DTEND, startMs + 10 * 60_000L);
+        v.put(CalendarContract.Events.EVENT_TIMEZONE, "Asia/Tokyo");
+        v.put(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_FREE);
+        v.put(CalendarContract.Events.HAS_ALARM, 0);
+        Uri u = cr.insert(CalendarContract.Events.CONTENT_URI, v);
+        return u == null ? "まとめをカレンダーに保存できませんでした" : null;
+    }
+
     // ---------- contacts / sms ----------
 
     private static String findContact(Context c, String name) {
