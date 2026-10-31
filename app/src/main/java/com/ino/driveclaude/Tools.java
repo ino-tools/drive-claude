@@ -54,10 +54,7 @@ final class Tools {
                         .put("model", new JSONObject().put("type", "string").put("enum", new JSONArray().put("haiku").put("sonnet").put("opus"))
                                 .put("description", "haiku=速い, sonnet=賢い, opus=最高性能"))
                         .put("speech_rate", p("number", "読み上げ速度。0.6〜2.0。標準1.2。「速く」なら+0.2程度"))
-                        .put("web_search", p("boolean", "Web検索を使うか"))
-                        .put("auto_send_to_chat", p("boolean", "会話終了時に自動でまとめをClaudeのチャットへ送るか"))));
-        a.put(tool("send_to_chat", "ここまでの会話をまとめて、ユーザーのClaudeのチャット（Googleカレンダー経由）へ送る。「Claudeに送って」「チャットに送って」と言われたら使う。",
-                new JSONObject()));
+                        .put("web_search", p("boolean", "Web検索を使うか"))));
         a.put(tool("add_memo", "メモ・やることを保存する。", new JSONObject().put("text", p("string", "メモの内容")), "text"));
         a.put(tool("list_memos", "保存したメモを番号付きで取得する。", new JSONObject()));
         a.put(tool("delete_memo", "メモを番号で削除する（済んだやること等）。", new JSONObject().put("number", p("integer", "list_memosの番号")), "number"));
@@ -97,7 +94,6 @@ final class Tools {
         try {
             switch (name) {
                 case "change_settings": return changeSettings(prefs, in);
-                case "send_to_chat": return VoiceService.sendNowFromTool(c);
                 case "add_memo":
                     Store.addMemo(c, in.optString("text"));
                     return "保存しました";
@@ -137,9 +133,8 @@ final class Tools {
         }
         if (in.has("speech_rate")) prefs.setRate((float) in.optDouble("speech_rate", 1.2));
         if (in.has("web_search")) prefs.setWebSearch(in.optBoolean("web_search", true));
-        if (in.has("auto_send_to_chat")) prefs.setCalendarSync(in.optBoolean("auto_send_to_chat", true));
-        return String.format(java.util.Locale.JAPAN, "変更しました。現在: モデル=%s, 読み上げ速度=%.1f, Web検索=%s, 終了時の自動送信=%s（モデル変更は次の発言から）",
-                prefs.modelShort(), prefs.rate(), prefs.webSearch() ? "オン" : "オフ", prefs.calendarSync() ? "オン" : "オフ");
+        return String.format(java.util.Locale.JAPAN, "変更しました。現在: モデル=%s, 読み上げ速度=%.1f, Web検索=%s（モデル変更は次の発言から）",
+                prefs.modelShort(), prefs.rate(), prefs.webSearch() ? "オン" : "オフ");
     }
 
     static String recentSummaries(Context c, int count, boolean detail) {
@@ -259,28 +254,6 @@ final class Tools {
             }
         }
         return sb.length() == 0 ? "予定はありません" : sb.toString();
-    }
-
-    /** 会話のまとめをGoogleカレンダーに「会話まとめ」の予定として保存する（通知なし・予定なし扱い）。 */
-    static String addSummaryEvent(Context c, String title, String description, long startMs) {
-        if (!granted(c, Manifest.permission.WRITE_CALENDAR) || !granted(c, Manifest.permission.READ_CALENDAR)) {
-            return "カレンダーの権限がないため、まとめをカレンダーに保存できませんでした";
-        }
-        ContentResolver cr = c.getContentResolver();
-        long calId = findCalendar(cr);
-        if (calId < 0) return "書き込めるカレンダーが見つからず、まとめをカレンダーに保存できませんでした";
-        if (description.length() > 7000) description = description.substring(0, 7000) + "\n…（以下省略）";
-        ContentValues v = new ContentValues();
-        v.put(CalendarContract.Events.CALENDAR_ID, calId);
-        v.put(CalendarContract.Events.TITLE, "🚗 会話まとめ：" + title);
-        v.put(CalendarContract.Events.DESCRIPTION, description);
-        v.put(CalendarContract.Events.DTSTART, startMs);
-        v.put(CalendarContract.Events.DTEND, startMs + 10 * 60_000L);
-        v.put(CalendarContract.Events.EVENT_TIMEZONE, "Asia/Tokyo");
-        v.put(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_FREE);
-        v.put(CalendarContract.Events.HAS_ALARM, 0);
-        Uri u = cr.insert(CalendarContract.Events.CONTENT_URI, v);
-        return u == null ? "まとめをカレンダーに保存できませんでした" : null;
     }
 
     // ---------- contacts / sms ----------
