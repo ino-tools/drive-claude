@@ -64,15 +64,16 @@ final class Tools {
                 new JSONObject().put("number", p("integer", "番号")), "number"));
         a.put(tool("get_recent_summaries", "過去の会話のまとめを新しい順に取得する。",
                 new JSONObject().put("count", p("integer", "件数。既定3"))));
-        a.put(tool("add_calendar_event", "Googleカレンダー（端末のカレンダー）に予定やリマインダーを登録する。",
+        a.put(tool("add_calendar_event", "Googleカレンダー（端末のカレンダー）に予定やリマインダーを登録する。ユーザーがはっきり登録を頼み、さらに内容の読み上げ確認に了承した後だけ呼ぶ。",
                 new JSONObject()
                         .put("title", p("string", "予定の名前"))
                         .put("start", p("string", "開始日時 yyyy-MM-ddTHH:mm（日本時間）。終日なら yyyy-MM-dd"))
                         .put("duration_minutes", p("integer", "長さ（分）。既定60"))
                         .put("all_day", p("boolean", "終日の予定か"))
                         .put("reminder_minutes", p("integer", "何分前に通知するか。リマインダー用途なら0"))
-                        .put("location", p("string", "場所（任意）")),
-                "title", "start"));
+                        .put("location", p("string", "場所（任意）"))
+                        .put("user_confirmed", p("boolean", "内容を読み上げてユーザーが「はい」等と了承したらtrue")),
+                "title", "start", "user_confirmed"));
         a.put(tool("list_calendar_events", "指定日からの予定を取得する。",
                 new JSONObject()
                         .put("date", p("string", "yyyy-MM-dd"))
@@ -83,8 +84,9 @@ final class Tools {
                 new JSONObject()
                         .put("phone_number", p("string", "電話番号"))
                         .put("recipient_name", p("string", "宛先の名前"))
-                        .put("message", p("string", "本文")),
-                "phone_number", "message"));
+                        .put("message", p("string", "本文"))
+                        .put("user_confirmed", p("boolean", "宛先と本文を読み上げてユーザーが了承したらtrue")),
+                "phone_number", "message", "user_confirmed"));
         return a;
     }
 
@@ -109,10 +111,14 @@ final class Tools {
                 case "forget":
                     return Store.removeAt(c, Store.MEMORY, in.optInt("number") - 1) ? "消しました" : "その番号の記憶はありません";
                 case "get_recent_summaries": return recentSummaries(c, in.optInt("count", 3), true);
-                case "add_calendar_event": return addEvent(c, in);
+                case "add_calendar_event":
+                    if (!in.optBoolean("user_confirmed", false)) return "未登録です。先に内容を読み上げて、登録してよいか確認してください。";
+                    return addEvent(c, in);
                 case "list_calendar_events": return listEvents(c, in);
                 case "find_contact": return findContact(c, in.optString("name"));
-                case "send_sms": return sendSms(c, in);
+                case "send_sms":
+                    if (!in.optBoolean("user_confirmed", false)) return "未送信です。先に宛先と本文を読み上げて、送ってよいか確認してください。";
+                    return sendSms(c, in);
                 default: return "未知のツール: " + name;
             }
         } catch (Exception e) {
