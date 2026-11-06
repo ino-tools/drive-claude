@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Geminiを有料枠で使う方法</title>
+<style>
+  :root{--bg:#0d1117;--fg:#e6edf3;--sub:#8b949e;--card:#161b22;--line:#30363d;--acc:#d97757;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--blue:#388bfd}
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px 16px 40px;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,"Noto Sans JP","Hiragino Sans",sans-serif}
+  h1{font-size:21px;line-height:1.4;margin:0 0 12px}
+  h2{font-size:17px;margin:30px 0 12px;padding-left:10px;border-left:4px solid var(--acc)}
+  p{margin:8px 0}
+  .lead{background:#1f6feb22;border:1px solid #1f6feb77;border-radius:12px;padding:12px 14px}
+  .lead b{color:#79c0ff}
+  .cols{display:flex;gap:10px}
+  .col{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .col h3{margin:0 0 4px;font-size:15px;text-align:center}
+  .col.free h3{color:var(--sub)}
+  .col.paid{border-color:#3fb95088}
+  .col.paid h3{color:var(--ok)}
+  .row{font-size:13px;line-height:1.5;padding:7px 0;border-top:1px dashed var(--line)}
+  .row small{display:block;color:var(--sub);font-size:11px}
+  .ok{color:var(--ok);font-weight:700}
+  .ng{color:var(--bad);font-weight:700}
+  .mid{color:var(--warn);font-weight:700}
+  .flow{display:flex;flex-direction:column;align-items:stretch}
+  .node{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .node b{display:block;margin-bottom:2px}
+  .node span{font-size:13px;color:var(--sub)}
+  .node.end{border-color:#3fb95088;background:#3fb95014}
+  .node.start{border-color:#d9775788}
+  .arrow{align-self:center;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:13px solid var(--sub);margin:7px 0}
+  .tag{display:inline-block;font-size:11px;background:#30363d;border-radius:6px;padding:1px 7px;margin-right:6px;color:var(--fg);vertical-align:1px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+  td{padding:8px 6px;border-top:1px solid var(--line)}
+  td:last-child{text-align:right;font-weight:700;white-space:nowrap}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  .steps li{counter-increment:s;position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 52px;margin-bottom:8px;font-size:15px}
+  .steps li:before{content:counter(s);position:absolute;left:13px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--acc);color:#fff;text-align:center;line-height:28px;font-weight:700}
+  .steps li small{display:block;color:var(--sub);font-size:12px;line-height:1.5;margin-top:2px}
+  .mock{display:block;margin-top:6px;background:#0d1117;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--sub)}
+  .mock b{color:var(--fg)}
+  a.btn{display:block;text-align:center;background:var(--acc);color:#fff;text-decoration:none;padding:14px;border-radius:12px;font-weight:700;margin:12px 0 4px}
+  .gauge{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .gauge .num{font-size:22px;font-weight:700}
+  .gauge .num small{font-size:13px;color:var(--sub);font-weight:400}
+  .bar{height:16px;background:#30363d;border-radius:8px;overflow:hidden;margin:8px 0}
+  .bar i{display:block;height:100%;background:var(--ok);min-width:3px}
+  .scale{display:flex;justify-content:space-between;font-size:11px;color:var(--sub)}
+  .note{font-size:13px;color:var(--sub)}
+  ul.warn{padding-left:20px;margin:6px 0}
+  ul.warn li{margin:8px 0;font-size:14px}
+</style>
+</head>
+<body>
+
+<h1>Geminiを有料枠で<br>「ほぼ無料」に使う方法</h1>
+
+<div class="lead">
+  <b>結論：</b>有料枠にしても会話そのものは完全な無料にはなりません。ただし<b>最低$10（約1,500円）を1回入れるだけ</b>で数か月使えて、<b>残高が0になると自動で止まる</b>ので使いすぎません。Web検索は<b>月5,000回まで無料</b>です。
+</div>
+
+<h2>① 無料枠と有料枠のちがい</h2>
+<div class="cols">
+  <div class="col free">
+    <h3>無料枠</h3>
+    <div class="row">料金<br><span class="ok">0円</span></div>
+    <div class="row">Web検索<br><span class="ng">✕ 使えない</span></div>
+    <div class="row">会話内容の扱い<br><span class="mid">△ Googleの改善に使われることがある</span></div>
+    <div class="row">回数制限<br><span class="mid">△ 少なめ</span></div>
+  </div>
+  <div class="col paid">
+    <h3>有料枠（プリペイド）</h3>
+    <div class="row">料金<br><span class="mid">残高から少しずつ</span></div>
+    <div class="row">Web検索<br><span class="ok">○ 月5,000回まで無料</span></div>
+    <div class="row">会話内容の扱い<br><span class="ok">○ 改善には使われない</span></div>
+    <div class="row">回数制限<br><span class="ok">○ ゆるい</span></div>
+  </div>
+</div>
+
+<h2>② お金の流れ（使いすぎない仕組み）</h2>
+<div class="flow">
+  <div class="node start"><b><span class="tag">1回だけ</span>$10のクレジットを購入</b><span>最低額です。約1,500円（1ドル＝150円の目安）</span></div>
+  <div class="arrow"></div>
+  <div class="node"><b>残高に入る</b><span>このクレジットはGemini専用です</span></div>
+  <div class="arrow"></div>
+  <div class="node"><b>話すたびに少しずつ減る</b><span>目安：1往復 約0.5円、検索もすると約1円</span></div>
+  <div class="arrow"></div>
+  <div class="node end"><b>残高が0になるとGeminiが止まる</b><span>追加で買わない限り、それ以上は課金されません</span></div>
+</div>
+
+<table>
+  <tr><td>1日30往復の目安</td><td>約15〜30円</td></tr>
+  <tr><td>$10で使える期間の目安</td><td>約2〜3か月</td></tr>
+  <tr><td>2027年1月以降（Flashの料金が2倍の予定）</td><td>約1〜1.5か月</td></tr>
+</table>
+<p class="note">目安です。記憶やメモが増えると少し多くかかります。クレジットは購入から12か月で失効し、返金できません。</p>
+
+<h2>③ 設定の手順</h2>
+<ol class="steps">
+  <li>スマホのChromeで AI Studio を開き、Googleアカウントでログイン
+    <small>いまGeminiのキーを作ったときと同じアカウントです。</small></li>
+  <li>「APIキー」の画面で、使っているキーのプロジェクトを探し、<b>「課金を設定（Set up billing）」</b>を押す
+    <span class="mock">プロジェクト名　　<b>無料</b>　[課金を設定]</span></li>
+  <li>お支払い方法を登録して、<b>「クレジットを購入（Buy credits）」</b>で最低額の$10を購入</li>
+  <li>表示が「有料（Tier 1 など）」になれば完了
+    <small>キーはそのまま使えます。このアプリの設定を変える必要はありません。</small></li>
+  <li>課金ページで<b>自動チャージ（Auto reload）がオフ</b>なのを確認
+    <small>オフなら、$10を使い切っても勝手に引き落とされません。心配なら、プロジェクトの月間上限（Spend cap）も設定できます。</small></li>
+  <li>使った量は AI Studio の Dashboard → Usage で見られます</li>
+</ol>
+<a class="btn" href="https://aistudio.google.com/">AI Studio を開く</a>
+<p class="note">画面の名前や場所は、Google側の更新で変わることがあります。</p>
+
+<h2>④ 今月のWeb検索（無料枠の見張り）</h2>
+<div class="gauge">
+  <div class="num">{{COUNT}} <small>/ 5,000回（{{MONTH}}）</small></div>
+  <div class="bar"><i style="width:{{PCT}}%"></i></div>
+  <div class="scale"><span>0</span><span>4,800回で自動停止</span><span>5,000</span></div>
+</div>
+<p class="note">アプリが数えた回数です（目安）。4,800回に近づくと、有料にならないようにアプリが検索を止めます。</p>
+
+<h2>⑤ 気をつけること</h2>
+<ul class="warn">
+  <li>完全な無料にしたいときは、無料枠のままにして、Web検索はあきらめてください。</li>
+  <li>円への換算や回数は目安です。料金はGoogleが変えることがあります。</li>
+  <li>キーは他の人に見せたり、チャットに貼ったりしないでください。</li>
+</ul>
+
+</body>
+</html>

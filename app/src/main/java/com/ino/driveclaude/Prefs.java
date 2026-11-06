@@ -25,6 +25,24 @@ final class Prefs {
     String extra() { return sp.getString("extra", "").trim(); }
     boolean askedOptional() { return sp.getBoolean("askedOptional", false); }
 
+    // ---- GeminiのWeb検索回数（月ごと。無料枠は月5,000回）----
+    static final int SEARCH_FREE_PER_MONTH = 5000;
+    static final int SEARCH_STOP_AT = 4800;
+
+    String searchMonth() {
+        java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.JAPAN);
+        f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Tokyo"));
+        return f.format(new java.util.Date());
+    }
+
+    int searchCount() {
+        return searchMonth().equals(sp.getString("searchMonth", "")) ? sp.getInt("searchCount", 0) : 0;
+    }
+
+    void addSearch(int n) {
+        sp.edit().putString("searchMonth", searchMonth()).putInt("searchCount", searchCount() + Math.max(1, n)).apply();
+    }
+
     String engine() { return sp.getString("engine", "claude"); }
     boolean gemini() { return "gemini".equals(engine()); }
     String geminiKey() { return sp.getString("geminiKey", "").trim(); }

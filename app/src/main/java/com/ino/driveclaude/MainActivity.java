@@ -366,6 +366,12 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         gnote.setTextColor(C_SUB);
         gnote.setTextSize(12);
         box.addView(gnote);
+        Button help = flatButton("📖 有料枠を「ほぼ無料」で使う方法（図解）");
+        help.setTextSize(14);
+        help.setOnClickListener(v -> startActivity(new Intent(this, HelpActivity.class)));
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+        hlp.topMargin = dp(8);
+        box.addView(help, hlp);
 
         box.addView(label("Geminiのモデル"));
         RadioGroup gmodels = new RadioGroup(this);

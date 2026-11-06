@@ -123,6 +123,9 @@ final class Gemini {
 
     /** Google検索を使った調べもの（検索専用のリクエスト）。 */
     private static String search(Prefs p, String query) {
+        if (p.searchCount() >= Prefs.SEARCH_STOP_AT) {
+            return "今月のWeb検索は、無料枠（月" + Prefs.SEARCH_FREE_PER_MONTH + "回）に近づいたため止めています。検索なしで答えてください。";
+        }
         try {
             SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd HH:mm (E)", Locale.JAPAN);
             f.setTimeZone(TimeZone.getTimeZone("Asia/Tokyo"));
@@ -133,7 +136,9 @@ final class Gemini {
                     .put("contents", new JSONArray().put(new JSONObject().put("role", "user").put("parts", parts(q))))
                     .put("tools", new JSONArray().put(new JSONObject().put("google_search", new JSONObject())))
                     .put("generationConfig", gen(1500, false));
-            String t = text(post(p, p.geminiModel(), body));
+            JSONObject resp = post(p, p.geminiModel(), body);
+            p.addSearch(queryCount(resp)); // 無料枠の見張り用に、実際に行われた検索の数を数える
+            String t = text(resp);
             return t.isEmpty() ? "検索結果が得られませんでした" : t;
         } catch (Claude.ApiException e) {
             return "Web検索に失敗しました（" + e.code + "）: " + e.getMessage()
@@ -154,6 +159,15 @@ final class Gemini {
         if (json) g.put("responseMimeType", "application/json");
         if (!thinkingUnsupported) g.put("thinkingConfig", new JSONObject().put("thinkingLevel", "low")); // 音声は速さ優先
         return g;
+    }
+
+    /** 1回の回答で実行されたGoogle検索の数（わからなければ1）。 */
+    private static int queryCount(JSONObject resp) {
+        JSONArray c = resp.optJSONArray("candidates");
+        JSONObject cand = c == null ? null : c.optJSONObject(0);
+        JSONObject gm = cand == null ? null : cand.optJSONObject("groundingMetadata");
+        JSONArray q = gm == null ? null : gm.optJSONArray("webSearchQueries");
+        return q == null ? 1 : Math.max(1, q.length());
     }
 
     private static String text(JSONObject resp) {
