@@ -54,7 +54,9 @@ final class Tools {
                         .put("model", new JSONObject().put("type", "string").put("enum", new JSONArray().put("haiku").put("sonnet").put("opus"))
                                 .put("description", "haiku=速い, sonnet=賢い, opus=最高性能"))
                         .put("speech_rate", p("number", "読み上げ速度。0.6〜2.0。標準1.2。「速く」なら+0.2程度"))
-                        .put("web_search", p("boolean", "Web検索を使うか"))));
+                        .put("web_search", p("boolean", "Web検索を使うか"))
+                        .put("engine", new JSONObject().put("type", "string").put("enum", new JSONArray().put("claude").put("gemini"))
+                                .put("description", "使うAI。claude または gemini。次の発言から切り替わる"))));
         a.put(tool("add_memo", "メモ・やることを保存する。", new JSONObject().put("text", p("string", "メモの内容")), "text"));
         a.put(tool("list_memos", "保存したメモを番号付きで取得する。", new JSONObject()));
         a.put(tool("delete_memo", "メモを番号で削除する（済んだやること等）。", new JSONObject().put("number", p("integer", "list_memosの番号")), "number"));
@@ -139,8 +141,15 @@ final class Tools {
         }
         if (in.has("speech_rate")) prefs.setRate((float) in.optDouble("speech_rate", 1.2));
         if (in.has("web_search")) prefs.setWebSearch(in.optBoolean("web_search", true));
-        return String.format(java.util.Locale.JAPAN, "変更しました。現在: モデル=%s, 読み上げ速度=%.1f, Web検索=%s（モデル変更は次の発言から）",
-                prefs.modelShort(), prefs.rate(), prefs.webSearch() ? "オン" : "オフ");
+        String note = "";
+        if (in.has("engine")) {
+            boolean toGemini = in.optString("engine").toLowerCase(java.util.Locale.ROOT).startsWith("gem");
+            if (toGemini && prefs.geminiKey().isEmpty()) note = " Geminiのキーが未設定なので切り替えられません。";
+            else if (!toGemini && prefs.apiKey().isEmpty()) note = " Claudeのキーが未設定なので切り替えられません。";
+            else prefs.setEngine(toGemini ? "gemini" : "claude");
+        }
+        return String.format(java.util.Locale.JAPAN, "変更しました。現在: AI=%s, 読み上げ速度=%.1f, Web検索=%s（AIやモデルの変更は次の発言から）%s",
+                prefs.engineLabel(), prefs.rate(), prefs.webSearch() ? "オン" : "オフ", note);
     }
 
     static String recentSummaries(Context c, int count, boolean detail) {

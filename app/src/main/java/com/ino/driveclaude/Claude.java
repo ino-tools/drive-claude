@@ -28,6 +28,7 @@ final class Claude {
 
     /** 会話の1ターン。必要ならツールを実行し、最終的な返事のテキストを返す。 */
     static String ask(Context ctx, Prefs p, JSONArray history) throws Exception {
+        if (p.gemini()) return Gemini.ask(ctx, p, history);
         JSONArray msgs = new JSONArray(history.toString());
         JSONArray tools = Tools.definitions();
         if (p.webSearch()) {
@@ -75,18 +76,25 @@ final class Claude {
 
     /** 会話全体を要約して {title, summary, decisions[], todos[], facts[]} を返す。 */
     static JSONObject summarize(Context ctx, Prefs p, String transcript) throws Exception {
-        String prompt = "以下は運転中の音声会話の記録です。あとで読み返すためのまとめを作ってください。\n"
+        if (p.gemini()) return Gemini.summarize(ctx, p, transcript);
+        JSONObject body = new JSONObject()
+                .put("model", Prefs.MODEL_IDS[0])
+                .put("max_tokens", 1500)
+                .put("messages", new JSONArray().put(new JSONObject().put("role", "user").put("content", summaryPrompt(ctx, transcript))));
+        return parseSummary(texts(post(p, body).optJSONArray("content")));
+    }
+
+    static String summaryPrompt(Context ctx, String transcript) {
+        return "以下は音声会話の記録です。あとで読み返すためのまとめを作ってください。\n"
                 + "JSONだけを出力してください（前後に文章やコードブロックを付けない）。形式:\n"
                 + "{\"title\":\"20文字以内の題\",\"summary\":\"話した内容の要点を3〜5文で\","
                 + "\"decisions\":[\"決めたこと\"],\"todos\":[\"やること・宿題\"],"
                 + "\"facts\":[\"ユーザー本人について次回以降も役立つ事実（家族、好み、予定、仕事など）。一時的な話題は入れない\"]}\n"
                 + "該当がない配列は空にしてください。\n\n既に覚えていること（factsに重複して入れない）:\n"
                 + Store.numbered(ctx, Store.MEMORY) + "\n会話記録:\n" + transcript;
-        JSONObject body = new JSONObject()
-                .put("model", Prefs.MODEL_IDS[0])
-                .put("max_tokens", 1500)
-                .put("messages", new JSONArray().put(new JSONObject().put("role", "user").put("content", prompt)));
-        String t = texts(post(p, body).optJSONArray("content"));
+    }
+
+    static JSONObject parseSummary(String t) throws Exception {
         int s = t.indexOf('{'), e = t.lastIndexOf('}');
         if (s >= 0 && e > s) {
             try { return new JSONObject(t.substring(s, e + 1)); } catch (Exception ignored) { }
@@ -94,7 +102,7 @@ final class Claude {
         return new JSONObject().put("title", "会話").put("summary", t);
     }
 
-    private static String systemPrompt(Context ctx, Prefs p) {
+    static String systemPrompt(Context ctx, Prefs p) {
         SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm (E)", Locale.JAPAN);
         f.setTimeZone(TimeZone.getTimeZone("Asia/Tokyo"));
         StringBuilder s = new StringBuilder();
@@ -114,7 +122,7 @@ final class Claude {
         s.append("- ユーザーが自分について長く役立つこと（家族の名前、好み、よく行く場所など）を話したり「覚えて」と言ったら remember で保存する。\n");
         s.append("現在日時: ").append(f.format(new Date())).append("（日本時間）。");
         s.append("ユーザーのおおよその現在地: ").append(p.city().isEmpty() ? "不明" : p.city()).append("。\n");
-        s.append("現在の設定: モデル=").append(p.modelShort())
+        s.append("現在の設定: AI=").append(p.engineLabel())
                 .append(String.format(Locale.JAPAN, ", 読み上げ速度=%.1f", p.rate()))
                 .append(", Web検索=").append(p.webSearch() ? "オン" : "オフ").append("\n");
         String mem = Store.numbered(ctx, Store.MEMORY);

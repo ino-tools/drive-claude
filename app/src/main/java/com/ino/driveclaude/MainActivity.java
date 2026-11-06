@@ -51,7 +51,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         getWindow().setNavigationBarColor(C_BG);
         buildUi();
 
-        if (savedInstanceState == null && prefs.autoStart() && !prefs.apiKey().isEmpty()) {
+        if (savedInstanceState == null && prefs.autoStart() && !prefs.activeKey().isEmpty()) {
             startVoice();
         }
     }
@@ -243,7 +243,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     // ---------- start / permissions ----------
 
     private void startVoice() {
-        if (prefs.apiKey().isEmpty()) {
+        if (prefs.activeKey().isEmpty()) {
             showSettings();
             return;
         }
@@ -313,6 +313,26 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(20), dp(4), dp(20), dp(8));
 
+        box.addView(label("使うAI"));
+        RadioGroup engineGroup = new RadioGroup(this);
+        RadioButton engClaude = new RadioButton(this);
+        engClaude.setId(2000);
+        engClaude.setText("Claude（Anthropic）");
+        engClaude.setTextColor(C_FG);
+        RadioButton engGemini = new RadioButton(this);
+        engGemini.setId(2001);
+        engGemini.setText("Gemini（Google）");
+        engGemini.setTextColor(C_FG);
+        engineGroup.addView(engClaude);
+        engineGroup.addView(engGemini);
+        engineGroup.check(prefs.gemini() ? 2001 : 2000);
+        box.addView(engineGroup);
+        TextView engNote = new TextView(this);
+        engNote.setText("声で「Geminiに切り替えて」「Claudeに戻して」でも変えられます。会話の記憶やメモは共通です。");
+        engNote.setTextColor(C_SUB);
+        engNote.setTextSize(12);
+        box.addView(engNote);
+
         box.addView(label("Anthropic APIキー（sk-ant-api03-…）"));
         EditText key = field(prefs.apiKey(), "sk-ant-api03-...");
         key.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
@@ -323,7 +343,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         note.setTextSize(12);
         box.addView(note);
 
-        box.addView(label("モデル"));
+        box.addView(label("Claudeのモデル"));
         RadioGroup models = new RadioGroup(this);
         int checked = 0;
         for (int i = 0; i < Prefs.MODEL_IDS.length; i++) {
@@ -336,6 +356,30 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         }
         models.check(1000 + checked);
         box.addView(models);
+
+        box.addView(label("Gemini APIキー（aistudio.google.com で発行）"));
+        EditText gkey = field(prefs.geminiKey(), "AIza...");
+        gkey.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        box.addView(gkey);
+        TextView gnote = new TextView(this);
+        gnote.setText("無料枠で使えますが、無料枠の会話内容はGoogleの製品改善に使われることがあります。Web検索は有料プランが必要な場合があります。");
+        gnote.setTextColor(C_SUB);
+        gnote.setTextSize(12);
+        box.addView(gnote);
+
+        box.addView(label("Geminiのモデル"));
+        RadioGroup gmodels = new RadioGroup(this);
+        int gchecked = 0;
+        for (int i = 0; i < Prefs.GEMINI_IDS.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setId(3000 + i);
+            rb.setText(Prefs.GEMINI_LABELS[i]);
+            rb.setTextColor(C_FG);
+            gmodels.addView(rb);
+            if (Prefs.GEMINI_IDS[i].equals(prefs.geminiModel())) gchecked = i;
+        }
+        gmodels.check(3000 + gchecked);
+        box.addView(gmodels);
 
         CheckBox web = new CheckBox(this);
         web.setText("Web検索を使う（天気・ニュース・お店など）");
@@ -386,7 +430,13 @@ public class MainActivity extends Activity implements VoiceService.Ui {
                     String k = key.getText().toString().trim();
                     prefs.save(k, Prefs.MODEL_IDS[idx], web.isChecked(), auto.isChecked(),
                             0.8f + rate.getProgress() / 10f, city.getText().toString(), extra.getText().toString());
-                    if (!k.isEmpty() && !k.startsWith("sk-ant-api")) {
+                    int gi = gmodels.getCheckedRadioButtonId() - 3000;
+                    if (gi < 0 || gi >= Prefs.GEMINI_IDS.length) gi = 0;
+                    boolean useGemini = engineGroup.getCheckedRadioButtonId() == 2001;
+                    prefs.saveGemini(useGemini ? "gemini" : "claude", gkey.getText().toString(), Prefs.GEMINI_IDS[gi]);
+                    if (useGemini && gkey.getText().toString().trim().isEmpty()) {
+                        addLog("sys", "Geminiを使うには、Gemini APIキーが必要です。");
+                    } else if (!k.isEmpty() && !k.startsWith("sk-ant-api")) {
                         addLog("sys", "注意: APIキーは通常 sk-ant-api03- で始まります。console.anthropic.com の API Keys で発行したキーか確認してください。");
                     } else {
                         addLog("sys", "設定を保存しました");

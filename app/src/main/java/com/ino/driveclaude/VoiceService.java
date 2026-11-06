@@ -191,7 +191,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
         } else {
             log("sys", "読み上げ機能を初期化できませんでした。返事は画面に表示します。");
         }
-        if (prefs.apiKey().isEmpty()) {
+        if (prefs.activeKey().isEmpty()) {
             log("sys", "APIキーが未設定です。設定から入力してください。");
             stopAll();
             return;
@@ -354,6 +354,8 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
                     } else if (e.code == 400 && e.getMessage() != null && e.getMessage().contains("credit")) {
                         stopAfterSpeech = true;
                         speak("APIのクレジットが足りません。");
+                    } else if (e.code == 429) {
+                        speak("利用上限に達しました。少し待ってからもう一度どうぞ。");
                     } else {
                         speak("エラーが起きました。もう一度どうぞ。");
                     }
@@ -375,7 +377,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
         synchronized (transcript) {
             int turns = 0;
             for (String[] t : transcript) if ("ユーザー".equals(t[0])) turns++;
-            if (turns < 2 || prefs.apiKey().isEmpty()) return;
+            if (turns < 2 || prefs.activeKey().isEmpty()) return;
             copy = new ArrayList<>(transcript);
             transcript.clear();
             startMs = sessionStartMs > 0 ? sessionStartMs : System.currentTimeMillis();
