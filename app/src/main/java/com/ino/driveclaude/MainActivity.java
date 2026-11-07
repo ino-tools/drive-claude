@@ -41,6 +41,9 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     private LinearLayout logBox;
     private ScrollView logScroll;
     private boolean pendingStart;
+    private Button updateBtn;
+    private Updater.Info newer;
+    private boolean updating;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +53,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         getWindow().setStatusBarColor(C_BG);
         getWindow().setNavigationBarColor(C_BG);
         buildUi();
+        checkUpdate();
 
         if (savedInstanceState == null && prefs.autoStart() && !prefs.activeKey().isEmpty()) {
             startVoice();
@@ -128,6 +132,19 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         settings.setOnClickListener(v -> showSettings());
         header.addView(settings, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)));
         root.addView(header);
+
+        // 新しい版のお知らせ（ボタン1つで更新）
+        updateBtn = new Button(this);
+        updateBtn.setAllCaps(false);
+        updateBtn.setTextColor(Color.WHITE);
+        updateBtn.setTextSize(15);
+        updateBtn.setStateListAnimator(null);
+        updateBtn.setBackground(rounded(0xFF1F6FEB, 12, 0));
+        updateBtn.setVisibility(View.GONE);
+        updateBtn.setOnClickListener(v -> startUpdate());
+        LinearLayout.LayoutParams ulp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+        ulp.topMargin = dp(10);
+        root.addView(updateBtn, ulp);
 
         // status
         status = new TextView(this);
@@ -308,87 +325,223 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         return e;
     }
 
+    // ---------- update ----------
+
+    private void checkUpdate() {
+        new Thread(() -> {
+            try {
+                Updater.Info info = Updater.check(getApplicationContext());
+                if (info != null) runOnUiThread(() -> {
+                    newer = info;
+                    updateBtn.setText("⬆ 新しい版があります（build " + info.build + "）タップで更新");
+                    updateBtn.setVisibility(View.VISIBLE);
+                });
+            } catch (Exception ignored) { }
+        }).start();
+    }
+
+    private void startUpdate() {
+        if (newer == null || updating) return;
+        if (VoiceService.instance != null) {
+            addLog("sys", "会話を止めてから更新してください。");
+            return;
+        }
+        if (!Updater.canInstall(this)) {
+            new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                    .setTitle("更新の許可が必要です")
+                    .setMessage("このアプリがアプリを更新できるように、次の画面で「このソースを許可」をオンにして、戻ってからもう一度ボタンを押してください。（最初の1回だけです）")
+                    .setPositiveButton("設定を開く", (d, w) -> startActivity(new Intent(
+                            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            android.net.Uri.parse("package:" + getPackageName()))))
+                    .setNegativeButton("やめる", null)
+                    .show();
+            return;
+        }
+        updating = true;
+        updateBtn.setEnabled(false);
+        updateBtn.setText("ダウンロード中… 0%");
+        final Updater.Info info = newer;
+        new Thread(() -> {
+            try {
+                Updater.downloadAndInstall(getApplicationContext(), info,
+                        pct -> runOnUiThread(() -> updateBtn.setText("ダウンロード中… " + pct + "%")));
+                runOnUiThread(() -> updateBtn.setText("インストール画面で「更新」を押してください"));
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    updateBtn.setText("⬆ 更新に失敗しました。タップでやり直し");
+                    addLog("sys", "更新エラー: " + e.getMessage());
+                });
+            } finally {
+                runOnUiThread(() -> { updating = false; updateBtn.setEnabled(true); });
+            }
+        }).start();
+    }
+
+    // ---------- settings dialog ----------
+
+    private void showGuideMenu() {
+        final String[] pages = {"start", "claude", "gemini", "openai", "grok"};
+        final String[] names = {"📖 はじめに：どのAIにする？／止まる仕組み", "Claude の登録方法", "Gemini の登録方法", "ChatGPT(OpenAI) の登録方法", "Grok(xAI) の登録方法"};
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle("登録ガイド（図解）")
+                .setItems(names, (d, w) -> startActivity(new Intent(this, HelpActivity.class).putExtra("page", pages[w])))
+                .setNegativeButton("閉じる", null)
+                .show();
+    }
+
+    /** 1つのAIの設定（キー・モデル・上限額・期限）。 */
+    private void showEngineSettings(String e) {
+        final int ei = Prefs.engineIndex(e);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(4), dp(20), dp(8));
+
+        TextView state = new TextView(this);
+        state.setTextColor(C_FG);
+        state.setTextSize(14);
+        state.setText(Budget.line(prefs, e) + "\n※使用額はトークン数からの見積もり（目安）です。正確な残高は各社の管理画面で確認してください。");
+        box.addView(state);
+
+        box.addView(label("APIキー"));
+        EditText key = field(prefs.keyOf(e), "claude".equals(e) ? "sk-ant-api03-..." : "gemini".equals(e) ? "AIza..." : "grok".equals(e) ? "xai-..." : "sk-...");
+        key.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        box.addView(key);
+        TextView kn = new TextView(this);
+        kn.setText("キーはこのスマホの中だけに保存されます。人に見せたりチャットに貼ったりしないでください。");
+        kn.setTextColor(C_SUB);
+        kn.setTextSize(12);
+        box.addView(kn);
+
+        box.addView(label("モデル"));
+        RadioGroup models = new RadioGroup(this);
+        String[] ids = Prefs.idsOf(e), labels = Prefs.labelsOf(e);
+        int checked = 0;
+        for (int i = 0; i < ids.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setId(1000 + i);
+            rb.setText(labels[i]);
+            rb.setTextColor(C_FG);
+            models.addView(rb);
+            if (ids[i].equals(prefs.presetOf(e))) checked = i;
+        }
+        models.check(1000 + checked);
+        box.addView(models);
+        EditText custom = null;
+        if (!"claude".equals(e)) {
+            box.addView(label("モデル名を自分で指定（任意。入れるとこちら優先）"));
+            custom = field(prefs.customOf(e), "例: " + ids[0]);
+            box.addView(custom);
+            TextView cn = new TextView(this);
+            cn.setText("自分で指定したモデルの料金は、1M文字あたり入力$2・出力$10で見積もります。");
+            cn.setTextColor(C_SUB);
+            cn.setTextSize(12);
+            box.addView(cn);
+        }
+
+        box.addView(label("上限額（ドル・累計。0なら上限なし）"));
+        EditText budget = field(prefs.budgetOf(e) == 0 ? "0" : String.format(java.util.Locale.US, "%.2f", prefs.budgetOf(e)), "例: 5");
+        budget.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        box.addView(budget);
+        TextView bn = new TextView(this);
+        bn.setText("追加したクレジットの額に合わせてください。使った額がここに達するとこのAIは止まります。");
+        bn.setTextColor(C_SUB);
+        bn.setTextSize(12);
+        box.addView(bn);
+
+        box.addView(label("期限日（yyyy-MM-dd。空なら期限なし）"));
+        EditText expiry = field(prefs.expiryOf(e), "例: " + java.time.LocalDate.now().plusDays(90));
+        expiry.setInputType(InputType.TYPE_CLASS_TEXT);
+        box.addView(expiry);
+        TextView en = new TextView(this);
+        en.setText("無料クレジットや、クレジットの失効日（購入から1年など）に合わせて入れます。この日を過ぎると止まります。");
+        en.setTextColor(C_SUB);
+        en.setTextSize(12);
+        box.addView(en);
+
+        CheckBox reset = new CheckBox(this);
+        reset.setText("使った額を0に戻す（クレジットを入れ直したとき）");
+        reset.setTextColor(C_FG);
+        box.addView(reset);
+
+        Button guide = flatButton("📖 " + Prefs.ENGINE_SPOKEN[ei] + " の登録方法（図解）");
+        guide.setTextSize(14);
+        guide.setOnClickListener(v -> startActivity(new Intent(this, HelpActivity.class).putExtra("page", e)));
+        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+        glp.topMargin = dp(10);
+        box.addView(guide, glp);
+
+        ScrollView sv = new ScrollView(this);
+        sv.addView(box);
+        final EditText fCustom = custom;
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(Prefs.ENGINE_NAMES[ei])
+                .setView(sv)
+                .setPositiveButton("保存", (d, w) -> {
+                    int idx = models.getCheckedRadioButtonId() - 1000;
+                    if (idx < 0 || idx >= ids.length) idx = 0;
+                    String k = key.getText().toString().trim();
+                    prefs.saveEngine(e, k, ids[idx], fCustom == null ? "" : fCustom.getText().toString());
+                    double b = 0;
+                    try { b = Double.parseDouble(budget.getText().toString().trim()); } catch (Exception ignored) { }
+                    String ex = expiry.getText().toString().trim();
+                    boolean badDate = !ex.isEmpty() && !Prefs.validDate(ex);
+                    prefs.saveLimit(e, b, badDate ? "" : ex);
+                    if (reset.isChecked()) prefs.resetSpent(e);
+                    if ("claude".equals(e) && !k.isEmpty() && !k.startsWith("sk-ant-api")) {
+                        addLog("sys", "注意: Anthropicのキーは通常 sk-ant-api03- で始まります。console.anthropic.com の API Keys で発行したキーか確認してください。");
+                    } else if (badDate) {
+                        addLog("sys", "期限日の形式が違うので期限なしにしました。2027-03-31 のように入れてください。");
+                    } else {
+                        addLog("sys", Prefs.ENGINE_SPOKEN[ei] + "の設定を保存しました。" + Budget.line(prefs, e));
+                    }
+                })
+                .setNegativeButton("キャンセル", null)
+                .show();
+    }
+
     private void showSettings() {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(20), dp(4), dp(20), dp(8));
 
-        box.addView(label("使うAI"));
+        box.addView(label("使うAI（声で「ChatGPTに切り替えて」でも変えられます）"));
         RadioGroup engineGroup = new RadioGroup(this);
-        RadioButton engClaude = new RadioButton(this);
-        engClaude.setId(2000);
-        engClaude.setText("Claude（Anthropic）");
-        engClaude.setTextColor(C_FG);
-        RadioButton engGemini = new RadioButton(this);
-        engGemini.setId(2001);
-        engGemini.setText("Gemini（Google）");
-        engGemini.setTextColor(C_FG);
-        engineGroup.addView(engClaude);
-        engineGroup.addView(engGemini);
-        engineGroup.check(prefs.gemini() ? 2001 : 2000);
-        box.addView(engineGroup);
-        TextView engNote = new TextView(this);
-        engNote.setText("声で「Geminiに切り替えて」「Claudeに戻して」でも変えられます。会話の記憶やメモは共通です。");
-        engNote.setTextColor(C_SUB);
-        engNote.setTextSize(12);
-        box.addView(engNote);
-
-        box.addView(label("Anthropic APIキー（sk-ant-api03-…）"));
-        EditText key = field(prefs.apiKey(), "sk-ant-api03-...");
-        key.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        box.addView(key);
-        TextView note = new TextView(this);
-        note.setText("キーはこのスマホの中だけに保存されます。");
-        note.setTextColor(C_SUB);
-        note.setTextSize(12);
-        box.addView(note);
-
-        box.addView(label("Claudeのモデル"));
-        RadioGroup models = new RadioGroup(this);
-        int checked = 0;
-        for (int i = 0; i < Prefs.MODEL_IDS.length; i++) {
+        for (int i = 0; i < Prefs.ENGINES.length; i++) {
             RadioButton rb = new RadioButton(this);
-            rb.setId(1000 + i);
-            rb.setText(Prefs.MODEL_LABELS[i]);
+            rb.setId(2000 + i);
+            rb.setText(Prefs.ENGINE_NAMES[i]);
             rb.setTextColor(C_FG);
-            models.addView(rb);
-            if (Prefs.MODEL_IDS[i].equals(prefs.model())) checked = i;
+            engineGroup.addView(rb);
         }
-        models.check(1000 + checked);
-        box.addView(models);
+        engineGroup.check(2000 + Prefs.engineIndex(prefs.engine()));
+        box.addView(engineGroup);
 
-        box.addView(label("Gemini APIキー（aistudio.google.com で発行）"));
-        EditText gkey = field(prefs.geminiKey(), "AIza...");
-        gkey.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        box.addView(gkey);
-        TextView gnote = new TextView(this);
-        gnote.setText("無料枠で使えますが、無料枠の会話内容はGoogleの製品改善に使われることがあります。Web検索は有料プランが必要な場合があります。");
-        gnote.setTextColor(C_SUB);
-        gnote.setTextSize(12);
-        box.addView(gnote);
-        Button help = flatButton("📖 有料枠を「ほぼ無料」で使う方法（図解）");
+        box.addView(label("AIごとの設定（キー・モデル・上限額・期限）"));
+        for (int i = 0; i < Prefs.ENGINES.length; i++) {
+            final String e = Prefs.ENGINES[i];
+            Button b = flatButton("🔑 " + Budget.line(prefs, e));
+            b.setTextSize(12);
+            b.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            b.setPadding(dp(12), 0, dp(12), 0);
+            b.setOnClickListener(v -> showEngineSettings(e));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56));
+            lp.topMargin = dp(6);
+            box.addView(b, lp);
+        }
+        TextView limNote = new TextView(this);
+        limNote.setText("上限額か期限に達したAIは自動で止まります（止まったことは声でも知らせます）。");
+        limNote.setTextColor(C_SUB);
+        limNote.setTextSize(12);
+        box.addView(limNote);
+        Button help = flatButton("📖 登録ガイド（図解）");
         help.setTextSize(14);
-        help.setOnClickListener(v -> startActivity(new Intent(this, HelpActivity.class)));
+        help.setOnClickListener(v -> showGuideMenu());
         LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
         hlp.topMargin = dp(8);
         box.addView(help, hlp);
 
-        box.addView(label("Geminiのモデル"));
-        RadioGroup gmodels = new RadioGroup(this);
-        int gchecked = 0;
-        for (int i = 0; i < Prefs.GEMINI_IDS.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setId(3000 + i);
-            rb.setText(Prefs.GEMINI_LABELS[i]);
-            rb.setTextColor(C_FG);
-            gmodels.addView(rb);
-            if (Prefs.GEMINI_IDS[i].equals(prefs.geminiModel())) gchecked = i;
-        }
-        gmodels.check(3000 + gchecked);
-        box.addView(gmodels);
-
         CheckBox web = new CheckBox(this);
-        web.setText("Web検索を使う（天気・ニュース・お店など）");
+        web.setText("Web検索を使う（Claude・Geminiのみ）");
         web.setTextColor(C_FG);
         web.setChecked(prefs.webSearch());
         box.addView(web);
@@ -431,21 +584,19 @@ public class MainActivity extends Activity implements VoiceService.Ui {
                 .setTitle("設定")
                 .setView(sv)
                 .setPositiveButton("保存", (d, w) -> {
-                    int idx = models.getCheckedRadioButtonId() - 1000;
-                    if (idx < 0 || idx >= Prefs.MODEL_IDS.length) idx = 0;
-                    String k = key.getText().toString().trim();
-                    prefs.save(k, Prefs.MODEL_IDS[idx], web.isChecked(), auto.isChecked(),
-                            0.8f + rate.getProgress() / 10f, city.getText().toString(), extra.getText().toString());
-                    int gi = gmodels.getCheckedRadioButtonId() - 3000;
-                    if (gi < 0 || gi >= Prefs.GEMINI_IDS.length) gi = 0;
-                    boolean useGemini = engineGroup.getCheckedRadioButtonId() == 2001;
-                    prefs.saveGemini(useGemini ? "gemini" : "claude", gkey.getText().toString(), Prefs.GEMINI_IDS[gi]);
-                    if (useGemini && gkey.getText().toString().trim().isEmpty()) {
-                        addLog("sys", "Geminiを使うには、Gemini APIキーが必要です。");
-                    } else if (!k.isEmpty() && !k.startsWith("sk-ant-api")) {
-                        addLog("sys", "注意: APIキーは通常 sk-ant-api03- で始まります。console.anthropic.com の API Keys で発行したキーか確認してください。");
+                    prefs.save(web.isChecked(), auto.isChecked(), 0.8f + rate.getProgress() / 10f,
+                            city.getText().toString(), extra.getText().toString());
+                    int ei = engineGroup.getCheckedRadioButtonId() - 2000;
+                    if (ei < 0 || ei >= Prefs.ENGINES.length) ei = 0;
+                    String chosen = Prefs.ENGINES[ei];
+                    prefs.setEngine(chosen);
+                    String why = Budget.blocked(prefs, chosen);
+                    if (prefs.keyOf(chosen).isEmpty()) {
+                        addLog("sys", Prefs.ENGINE_SPOKEN[ei] + "を使うには、「AIごとの設定」でAPIキーを入れてください。");
+                    } else if (why != null) {
+                        addLog("sys", why);
                     } else {
-                        addLog("sys", "設定を保存しました");
+                        addLog("sys", "設定を保存しました（使うAI: " + Prefs.ENGINE_SPOKEN[ei] + "）");
                     }
                 })
                 .setNegativeButton("キャンセル", null)

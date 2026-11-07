@@ -1,16 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:translateX="33"
-        android:translateY="33"
-        android:scaleX="1.75"
-        android:scaleY="1.75">
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M12,14c1.66,0 2.99,-1.34 2.99,-3L15,5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3zM17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11H5c0,3.41 2.72,6.23 6,6.72V21h2v-3.28c3.28,-0.48 6,-3.3 6,-6.72h-1.7z" />
-    </group>
+    <!-- 外側のリング -->
+    <path
+        android:pathData="M54,24 A30,30 0 1,1 53.99,24 Z"
+        android:strokeWidth="3"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="24"
+                android:startY="24"
+                android:endX="84"
+                android:endY="84"
+                android:type="linear">
+                <item android:color="#FF00E5FF" android:offset="0.0" />
+                <item android:color="#FF7C4DFF" android:offset="0.55" />
+                <item android:color="#FFFF2D95" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- 声の波形（5本） -->
+    <path
+        android:pathData="M34,47 L34,61 M44,41 L44,67 M54,34 L54,74 M64,41 L64,67 M74,47 L74,61"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="30"
+                android:startY="34"
+                android:endX="78"
+                android:endY="74"
+                android:type="linear">
+                <item android:color="#FF00E5FF" android:offset="0.0" />
+                <item android:color="#FF7C4DFF" android:offset="0.5" />
+                <item android:color="#FFFF2D95" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>

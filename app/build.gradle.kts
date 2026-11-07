@@ -10,8 +10,9 @@ android {
         applicationId = "com.ino.driveclaude"
         minSdk = 31
         targetSdk = 34
-        versionCode = 8
-        versionName = "1.5.1"
+        // CIの実行番号＝リリース名 build-N と一致させる（更新の判定に使う）
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "9").toInt()
+        versionName = "1.6.0"
     }
 
     signingConfigs {

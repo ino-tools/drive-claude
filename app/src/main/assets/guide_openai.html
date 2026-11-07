@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatGPTの登録</title><style>
+  :root{--bg:#0d1117;--fg:#e6edf3;--sub:#8b949e;--card:#161b22;--line:#30363d;--acc:#d97757;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--blue:#388bfd}
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px 16px 40px;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,"Noto Sans JP","Hiragino Sans",sans-serif}
+  h1{font-size:21px;line-height:1.4;margin:0 0 12px}
+  h2{font-size:17px;margin:30px 0 12px;padding-left:10px;border-left:4px solid var(--acc)}
+  p{margin:8px 0}
+  .lead{background:#1f6feb22;border:1px solid #1f6feb77;border-radius:12px;padding:12px 14px}
+  .lead b{color:#79c0ff}
+  .cols{display:flex;gap:10px}
+  .col{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .col h3{margin:0 0 4px;font-size:15px;text-align:center}
+  .col.free h3{color:var(--sub)}
+  .col.paid{border-color:#3fb95088}
+  .col.paid h3{color:var(--ok)}
+  .row{font-size:13px;line-height:1.5;padding:7px 0;border-top:1px dashed var(--line)}
+  .row small{display:block;color:var(--sub);font-size:11px}
+  .ok{color:var(--ok);font-weight:700}
+  .ng{color:var(--bad);font-weight:700}
+  .mid{color:var(--warn);font-weight:700}
+  .flow{display:flex;flex-direction:column;align-items:stretch}
+  .node{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .node b{display:block;margin-bottom:2px}
+  .node span{font-size:13px;color:var(--sub)}
+  .node.end{border-color:#3fb95088;background:#3fb95014}
+  .node.start{border-color:#d9775788}
+  .arrow{align-self:center;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:13px solid var(--sub);margin:7px 0}
+  .tag{display:inline-block;font-size:11px;background:#30363d;border-radius:6px;padding:1px 7px;margin-right:6px;color:var(--fg);vertical-align:1px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+  td{padding:8px 6px;border-top:1px solid var(--line)}
+  td:last-child{text-align:right;font-weight:700;white-space:nowrap}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  .steps li{counter-increment:s;position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 52px;margin-bottom:8px;font-size:15px}
+  .steps li:before{content:counter(s);position:absolute;left:13px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--acc);color:#fff;text-align:center;line-height:28px;font-weight:700}
+  .steps li small{display:block;color:var(--sub);font-size:12px;line-height:1.5;margin-top:2px}
+  .mock{display:block;margin-top:6px;background:#0d1117;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--sub)}
+  .mock b{color:var(--fg)}
+  a.btn{display:block;text-align:center;background:var(--acc);color:#fff;text-decoration:none;padding:14px;border-radius:12px;font-weight:700;margin:12px 0 4px}
+  .gauge{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .gauge .num{font-size:22px;font-weight:700}
+  .gauge .num small{font-size:13px;color:var(--sub);font-weight:400}
+  .bar{height:16px;background:#30363d;border-radius:8px;overflow:hidden;margin:8px 0}
+  .bar i{display:block;height:100%;background:var(--ok);min-width:3px}
+  .scale{display:flex;justify-content:space-between;font-size:11px;color:var(--sub)}
+  .note{font-size:13px;color:var(--sub)}
+  ul.warn{padding-left:20px;margin:6px 0}
+  ul.warn li{margin:8px 0;font-size:14px}
+
+  table.cmp td,table.cmp th{font-size:12px;padding:7px 4px;border-top:1px solid var(--line);text-align:center;vertical-align:top}
+  table.cmp th{color:var(--sub);font-weight:600}
+  table.cmp td:first-child,table.cmp th:first-child{text-align:left;font-weight:700;white-space:normal}
+  table.cmp td:last-child{text-align:center;font-weight:400;white-space:normal}
+  .three{display:flex;flex-direction:column;gap:0}
+</style></head><body>
+<h1>ChatGPT（OpenAI）を<br>登録して使う方法</h1>
+
+<div class="lead"><b>要点：</b>ChatGPT（OpenAI）のAPIも<b>先払い</b>。最低$5（約750円）から入れられ、<b>残高が0になると止まります</b>。新規の無料クレジットは基本的にありません（あっても少額）。ChatGPTアプリの月額プランとは別の契約です。</div>
+
+<h2>① お金の流れ</h2>
+<div class="flow"><div class="node start"><b><span class="tag">1回</span>クレジットを購入</b><span>最低$5（初期値は$10）。購入から1年で失効</span></div><div class="arrow"></div><div class="node "><b>残高に入る</b><span>API専用です</span></div><div class="arrow"></div><div class="node "><b>話すたびに少し減る</b><span>安いモデルなら1往復で1円未満</span></div><div class="arrow"></div><div class="node end"><b>残高が0で止まる</b><span>自動チャージ（Auto recharge）をオフなら、追加では引き落とされません</span></div></div>
+<table>
+<tr><td>GPT-6 Luna（おすすめ・安い）</td><td>入力$0.10／出力$0.50</td></tr>
+<tr><td>GPT-6.1 Sol</td><td>入力$2／出力$10</td></tr>
+<tr><td>GPT-6 Astra（最高性能）</td><td>入力$10／出力$50</td></tr>
+</table>
+<p class="note">100万トークンあたりの目安。モデル名や料金は更新で変わります。合わないときは、設定の「モデル名を自分で指定」に新しい名前を入れてください。</p>
+
+<h2>② 登録の手順</h2>
+<ol class="steps"><li>スマホのChromeで OpenAI の開発者ページを開き、登録<small>メールやGoogleアカウントでログインします。</small><span class="mock">platform.openai.com</span></li><li>Billing（請求）でお支払い方法を登録</li><li><b>クレジットを購入</b>（最低$5）<small>Add to credit balance。</small></li><li><b>自動チャージ（Auto recharge）はオフ</b>のままにする<small>オンだと、残高が減るたびに自動で追加購入されます。</small></li><li><b>APIキーを作る</b><small>API keys → Create new secret key。<b>表示されたキー（sk-…）をすぐコピー</b>。後からは全体を見られません。</small></li><li>使った量を見る方法<small>Usage ページで日ごとの使用量を確認できます。</small></li></ol>
+<a class="btn" href="https://platform.openai.com/">OpenAI の開発者ページを開く</a>
+
+<h2>アプリに登録する</h2>
+<ol class="steps">
+<li>このアプリの「⚙ 設定」を開く<small>ホーム右上のボタンです。</small></li>
+<li>「AIごとの設定」からこのAIを選び、<b>APIキー</b>を貼る<small>キーはスマホの中だけに保存されます。</small></li>
+<li><b>上限額</b>と<b>期限日</b>を入れて「保存」<small>入れたクレジットの額と、失効日に合わせます。</small></li>
+<li>「使うAI」でこのAIを選ぶ<small>声で「◯◯に切り替えて」でも変えられます。</small></li>
+</ol>
+<h2>止まる仕組み（ChatGPT）</h2>
+<div class="flow">
+  <div class="node start"><b><span class="tag">アプリ①</span>上限額に達する</b><span>設定で決めた金額（ドル）まで使うと、ChatGPTだけ自動で止まります</span></div>
+  <div class="arrow"></div>
+  <div class="node start"><b><span class="tag">アプリ②</span>期限日が来る</b><span>設定の「期限日」を過ぎると、ChatGPTだけ自動で止まります</span></div>
+  <div class="arrow"></div>
+  <div class="node end"><b><span class="tag">会社側</span>残高が0になる</b><span>クレジットが0になると、OpenAI側がAPIを拒否します（アプリが「クレジットが切れた」と知らせます）。</span></div>
+</div>
+<p class="note">止まるとアプリが声で知らせて会話を終えます。ほかのAIは使えます（声で「◯◯に切り替えて」）。使った額はトークン数からの見積もり（目安）なので、正確な残高は各社の画面で確認してください。</p>
+<h2>気をつけること</h2><ul class="warn"><li>このアプリのChatGPTには<b>Web検索がありません</b>。天気や最新ニュースは分からないと答えます。</li><li>ChatGPTのPlusなどの月額プランでは、このAPIは使えません。</li><li>キーを人に見せたりチャットに貼ったりしない。</li><li>料金やモデル名は会社が変えることがあります。</li></ul>
+
+</body></html>

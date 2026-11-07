@@ -44,7 +44,9 @@ public class HelpActivity extends Activity {
         Prefs p = new Prefs(this);
         int count = p.searchCount();
         double pct = Math.min(100.0, count * 100.0 / Prefs.SEARCH_FREE_PER_MONTH);
-        try (InputStream in = getAssets().open("gemini_billing_help.html")) {
+        String page = getIntent().getStringExtra("page");
+        String file = "gemini".equals(page) || page == null ? "gemini_billing_help.html" : "guide_" + page + ".html";
+        try (InputStream in = getAssets().open(file)) {
             ByteArrayOutputStream bo = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             int n;

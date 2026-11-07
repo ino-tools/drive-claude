@@ -55,8 +55,9 @@ final class Tools {
                                 .put("description", "haiku=速い, sonnet=賢い, opus=最高性能"))
                         .put("speech_rate", p("number", "読み上げ速度。0.6〜2.0。標準1.2。「速く」なら+0.2程度"))
                         .put("web_search", p("boolean", "Web検索を使うか"))
-                        .put("engine", new JSONObject().put("type", "string").put("enum", new JSONArray().put("claude").put("gemini"))
-                                .put("description", "使うAI。claude または gemini。次の発言から切り替わる"))));
+                        .put("engine", new JSONObject().put("type", "string").put("enum", new JSONArray().put("claude").put("gemini").put("openai").put("grok"))
+                                .put("description", "使うAI。claude, gemini, openai(ChatGPT), grok のどれか。次の発言から切り替わる"))));
+        a.put(tool("check_usage", "各AIの使った金額（目安）・上限額・期限を取得する。「あといくら使える？」などに答える。", new JSONObject()));
         a.put(tool("add_memo", "メモ・やることを保存する。", new JSONObject().put("text", p("string", "メモの内容")), "text"));
         a.put(tool("list_memos", "保存したメモを番号付きで取得する。", new JSONObject()));
         a.put(tool("delete_memo", "メモを番号で削除する（済んだやること等）。", new JSONObject().put("number", p("integer", "list_memosの番号")), "number"));
@@ -98,6 +99,11 @@ final class Tools {
         try {
             switch (name) {
                 case "change_settings": return changeSettings(prefs, in);
+                case "check_usage": {
+                    StringBuilder sb = new StringBuilder("使った金額はトークン数からの見積もり（目安）です。\n");
+                    for (String e : Prefs.ENGINES) sb.append(Budget.line(prefs, e)).append('\n');
+                    return sb.toString();
+                }
                 case "add_memo":
                     Store.addMemo(c, in.optString("text"));
                     return "保存しました";
@@ -143,10 +149,11 @@ final class Tools {
         if (in.has("web_search")) prefs.setWebSearch(in.optBoolean("web_search", true));
         String note = "";
         if (in.has("engine")) {
-            boolean toGemini = in.optString("engine").toLowerCase(java.util.Locale.ROOT).startsWith("gem");
-            if (toGemini && prefs.geminiKey().isEmpty()) note = " Geminiのキーが未設定なので切り替えられません。";
-            else if (!toGemini && prefs.apiKey().isEmpty()) note = " Claudeのキーが未設定なので切り替えられません。";
-            else prefs.setEngine(toGemini ? "gemini" : "claude");
+            String to = Prefs.parseEngine(in.optString("engine"));
+            if (to == null) note = " そのAIは対応していません。";
+            else if (prefs.keyOf(to).isEmpty()) note = " " + Prefs.ENGINE_SPOKEN[Prefs.engineIndex(to)] + "のキーが未設定なので切り替えられません。";
+            else if (Budget.blocked(prefs, to) != null) note = " " + Budget.blocked(prefs, to);
+            else prefs.setEngine(to);
         }
         return String.format(java.util.Locale.JAPAN, "変更しました。現在: AI=%s, 読み上げ速度=%.1f, Web検索=%s（AIやモデルの変更は次の発言から）%s",
                 prefs.engineLabel(), prefs.rate(), prefs.webSearch() ? "オン" : "オフ", note);

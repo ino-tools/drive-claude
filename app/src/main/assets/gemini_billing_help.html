@@ -113,6 +113,13 @@
 <a class="btn" href="https://aistudio.google.com/">AI Studio を開く</a>
 <p class="note">画面の名前や場所は、Google側の更新で変わることがあります。</p>
 
+<h2>アプリに登録する</h2>
+<ol class="steps">
+<li>このアプリの「⚙ 設定」を開く<small>ホーム右上のボタンです。</small></li>
+<li>「AIごとの設定」からこのAIを選び、<b>APIキー</b>を貼る<small>キーはスマホの中だけに保存されます。</small></li>
+<li><b>上限額</b>と<b>期限日</b>を入れて「保存」<small>入れたクレジットの額と、失効日に合わせます。</small></li>
+<li>「使うAI」でこのAIを選ぶ<small>声で「◯◯に切り替えて」でも変えられます。</small></li>
+</ol>
 <h2>④ 今月のWeb検索（無料枠の見張り）</h2>
 <div class="gauge">
   <div class="num">{{COUNT}} <small>/ 5,000回（{{MONTH}}）</small></div>
@@ -121,6 +128,15 @@
 </div>
 <p class="note">アプリが数えた回数です（目安）。4,800回に近づくと、有料にならないようにアプリが検索を止めます。</p>
 
+<h2>止まる仕組み（Gemini）</h2>
+<div class="flow">
+  <div class="node start"><b><span class="tag">アプリ①</span>上限額に達する</b><span>設定で決めた金額（ドル）まで使うと、Geminiだけ自動で止まります</span></div>
+  <div class="arrow"></div>
+  <div class="node start"><b><span class="tag">アプリ②</span>期限日が来る</b><span>設定の「期限日」を過ぎると、Geminiだけ自動で止まります</span></div>
+  <div class="arrow"></div>
+  <div class="node end"><b><span class="tag">会社側</span>残高が0になる</b><span>残高が0になるとGoogle側が止めます（アプリが「クレジットが切れた」と知らせます）。</span></div>
+</div>
+<p class="note">止まるとアプリが声で知らせて会話を終えます。ほかのAIは使えます（声で「◯◯に切り替えて」）。使った額はトークン数からの見積もり（目安）なので、正確な残高は各社の画面で確認してください。</p>
 <h2>⑤ 気をつけること</h2>
 <ul class="warn">
   <li>完全な無料にしたいときは、無料枠のままにして、Web検索はあきらめてください。</li>

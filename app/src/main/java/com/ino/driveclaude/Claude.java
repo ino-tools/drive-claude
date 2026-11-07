@@ -28,7 +28,10 @@ final class Claude {
 
     /** 会話の1ターン。必要ならツールを実行し、最終的な返事のテキストを返す。 */
     static String ask(Context ctx, Prefs p, JSONArray history) throws Exception {
+        String stopWhy = Budget.blocked(p, p.engine());
+        if (stopWhy != null) throw new ApiException(Budget.ERR_STOPPED, stopWhy);
         if (p.gemini()) return Gemini.ask(ctx, p, history);
+        if (!"claude".equals(p.engine())) return OpenAi.ask(ctx, p, history);
         JSONArray msgs = new JSONArray(history.toString());
         JSONArray tools = Tools.definitions();
         if (p.webSearch()) {
@@ -41,7 +44,7 @@ final class Claude {
 
         for (int iter = 0; iter < 8; iter++) {
             JSONObject body = new JSONObject()
-                    .put("model", p.model())
+                    .put("model", p.modelOf("claude"))
                     .put("max_tokens", 1024)
                     .put("system", system)
                     .put("tools", tools)
@@ -76,7 +79,9 @@ final class Claude {
 
     /** 会話全体を要約して {title, summary, decisions[], todos[], facts[]} を返す。 */
     static JSONObject summarize(Context ctx, Prefs p, String transcript) throws Exception {
+        // まとめは会話の記憶を残すための1回だけの呼び出しなので、上限・期限で止まっていても実行する
         if (p.gemini()) return Gemini.summarize(ctx, p, transcript);
+        if (!"claude".equals(p.engine())) return OpenAi.summarize(ctx, p, transcript);
         JSONObject body = new JSONObject()
                 .put("model", Prefs.MODEL_IDS[0])
                 .put("max_tokens", 1500)
@@ -120,6 +125,9 @@ final class Claude {
         s.append("- 家族などを呼び名で言われたら、覚えていることから実名を探してから find_contact を使う。\n");
         s.append("- LINEやメールは送れないので、頼まれたらSMSなら送れると伝える。\n");
         s.append("- ユーザーが自分について長く役立つこと（家族の名前、好み、よく行く場所など）を話したり「覚えて」と言ったら remember で保存する。\n");
+        if ("openai".equals(p.engine()) || "grok".equals(p.engine())) {
+            s.append("- このAIにはWeb検索がない。最新情報や天気などは分からないと正直に伝える。\n");
+        }
         s.append("現在日時: ").append(f.format(new Date())).append("（日本時間）。");
         s.append("ユーザーのおおよその現在地: ").append(p.city().isEmpty() ? "不明" : p.city()).append("。\n");
         s.append("現在の設定: AI=").append(p.engineLabel())
@@ -152,7 +160,7 @@ final class Claude {
             c.setReadTimeout(90000);
             c.setDoOutput(true);
             c.setRequestProperty("content-type", "application/json");
-            c.setRequestProperty("x-api-key", p.apiKey());
+            c.setRequestProperty("x-api-key", p.keyOf("claude"));
             c.setRequestProperty("anthropic-version", "2023-06-01");
             try (OutputStream os = c.getOutputStream()) {
                 os.write(body.toString().getBytes(StandardCharsets.UTF_8));
@@ -164,7 +172,9 @@ final class Claude {
                 try { msg = new JSONObject(resp).getJSONObject("error").getString("message"); } catch (Exception ignored) { }
                 throw new ApiException(code, msg);
             }
-            return new JSONObject(resp);
+            JSONObject r = new JSONObject(resp);
+            Budget.recordClaude(p, r);
+            return r;
         } finally {
             c.disconnect();
         }

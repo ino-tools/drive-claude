@@ -348,12 +348,18 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
                 h.post(() -> {
                     dropLastUser();
                     log("sys", "APIエラー(" + e.code + "): " + e.getMessage());
-                    if (e.code == 401 || e.code == 403) {
+                    String em = e.getMessage() == null ? "" : e.getMessage().toLowerCase(java.util.Locale.ROOT);
+                    boolean creditOut = e.code == 402 || ((e.code == 400 || e.code == 429)
+                            && (em.contains("credit") || em.contains("balance") || em.contains("billing") || em.contains("insufficient")));
+                    if (e.code == Budget.ERR_STOPPED) {
+                        stopAfterSpeech = true;
+                        speak(e.getMessage());
+                    } else if (e.code == 401 || e.code == 403) {
                         stopAfterSpeech = true;
                         speak("APIキーが正しくないようです。設定を確認してください。");
-                    } else if (e.code == 400 && e.getMessage() != null && e.getMessage().contains("credit")) {
+                    } else if (creditOut) {
                         stopAfterSpeech = true;
-                        speak("APIのクレジットが足りません。");
+                        speak("AI会社側のクレジットが切れたようです。止めました。設定で別のAIに切り替えるか、クレジットを追加してください。");
                     } else if (e.code == 429) {
                         speak("利用上限に達しました。少し待ってからもう一度どうぞ。");
                     } else {

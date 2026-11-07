@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>はじめに</title><style>
+  :root{--bg:#0d1117;--fg:#e6edf3;--sub:#8b949e;--card:#161b22;--line:#30363d;--acc:#d97757;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--blue:#388bfd}
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px 16px 40px;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,"Noto Sans JP","Hiragino Sans",sans-serif}
+  h1{font-size:21px;line-height:1.4;margin:0 0 12px}
+  h2{font-size:17px;margin:30px 0 12px;padding-left:10px;border-left:4px solid var(--acc)}
+  p{margin:8px 0}
+  .lead{background:#1f6feb22;border:1px solid #1f6feb77;border-radius:12px;padding:12px 14px}
+  .lead b{color:#79c0ff}
+  .cols{display:flex;gap:10px}
+  .col{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .col h3{margin:0 0 4px;font-size:15px;text-align:center}
+  .col.free h3{color:var(--sub)}
+  .col.paid{border-color:#3fb95088}
+  .col.paid h3{color:var(--ok)}
+  .row{font-size:13px;line-height:1.5;padding:7px 0;border-top:1px dashed var(--line)}
+  .row small{display:block;color:var(--sub);font-size:11px}
+  .ok{color:var(--ok);font-weight:700}
+  .ng{color:var(--bad);font-weight:700}
+  .mid{color:var(--warn);font-weight:700}
+  .flow{display:flex;flex-direction:column;align-items:stretch}
+  .node{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .node b{display:block;margin-bottom:2px}
+  .node span{font-size:13px;color:var(--sub)}
+  .node.end{border-color:#3fb95088;background:#3fb95014}
+  .node.start{border-color:#d9775788}
+  .arrow{align-self:center;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:13px solid var(--sub);margin:7px 0}
+  .tag{display:inline-block;font-size:11px;background:#30363d;border-radius:6px;padding:1px 7px;margin-right:6px;color:var(--fg);vertical-align:1px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+  td{padding:8px 6px;border-top:1px solid var(--line)}
+  td:last-child{text-align:right;font-weight:700;white-space:nowrap}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  .steps li{counter-increment:s;position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 52px;margin-bottom:8px;font-size:15px}
+  .steps li:before{content:counter(s);position:absolute;left:13px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--acc);color:#fff;text-align:center;line-height:28px;font-weight:700}
+  .steps li small{display:block;color:var(--sub);font-size:12px;line-height:1.5;margin-top:2px}
+  .mock{display:block;margin-top:6px;background:#0d1117;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--sub)}
+  .mock b{color:var(--fg)}
+  a.btn{display:block;text-align:center;background:var(--acc);color:#fff;text-decoration:none;padding:14px;border-radius:12px;font-weight:700;margin:12px 0 4px}
+  .gauge{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .gauge .num{font-size:22px;font-weight:700}
+  .gauge .num small{font-size:13px;color:var(--sub);font-weight:400}
+  .bar{height:16px;background:#30363d;border-radius:8px;overflow:hidden;margin:8px 0}
+  .bar i{display:block;height:100%;background:var(--ok);min-width:3px}
+  .scale{display:flex;justify-content:space-between;font-size:11px;color:var(--sub)}
+  .note{font-size:13px;color:var(--sub)}
+  ul.warn{padding-left:20px;margin:6px 0}
+  ul.warn li{margin:8px 0;font-size:14px}
+
+  table.cmp td,table.cmp th{font-size:12px;padding:7px 4px;border-top:1px solid var(--line);text-align:center;vertical-align:top}
+  table.cmp th{color:var(--sub);font-weight:600}
+  table.cmp td:first-child,table.cmp th:first-child{text-align:left;font-weight:700;white-space:normal}
+  table.cmp td:last-child{text-align:center;font-weight:400;white-space:normal}
+  .three{display:flex;flex-direction:column;gap:0}
+</style></head><body>
+<h1>AIを登録して使う<br>はじめのガイド</h1>
+
+<div class="lead"><b>最初に大事なこと：</b>どのAIも「有料枠に登録する＝完全に無料」にはなりません。ただし<b>先に入れた分だけ</b>しか使えない（プリペイド）ので、使いすぎません。このアプリは<b>上限額と期限日でも自動で止めます</b>。</div>
+
+<h2>① 4つのAIの比べ方</h2>
+<table class="cmp">
+<tr><th></th><th>お試し</th><th>最低チャージ</th><th>失効</th><th>Web検索</th></tr>
+<tr><td>Claude</td><td>新規に少額（変わる）</td><td>$5</td><td>1年</td><td class="ok">○</td></tr>
+<tr><td>Gemini</td><td class="ok">無料枠あり</td><td>$10</td><td>12か月</td><td class="ok">○ 月5,000回無料</td></tr>
+<tr><td>ChatGPT</td><td>基本なし</td><td>$5</td><td>1年</td><td class="ng">✕</td></tr>
+<tr><td>Grok</td><td>新規に特典のことあり（額は変わる）</td><td>画面で確認</td><td>画面で確認</td><td class="ng">✕</td></tr>
+</table>
+<p class="note">お試しの額や条件は会社が変えます。必ず各社の画面で確認してください。</p>
+
+<h2>② 登録から利用までの流れ</h2>
+<div class="flow"><div class="node start"><b><span class="tag">1</span>会社のサイトで登録</b><span>メールやGoogleアカウントでアカウントを作る</span></div><div class="arrow"></div><div class="node "><b><span class="tag">2</span>クレジットを購入（またはお試し分を受け取る）</b><span>自動チャージはオフのままにする</span></div><div class="arrow"></div><div class="node "><b><span class="tag">3</span>APIキーを作る</b><span>作った直後にしか全体が見られないので、すぐコピー</span></div><div class="arrow"></div><div class="node "><b><span class="tag">4</span>アプリの設定に貼る</b><span>上限額と期限日も入れる</span></div><div class="arrow"></div><div class="node end"><b><span class="tag">5</span>声で会話する</b><span>「ChatGPTに切り替えて」などで使うAIを変えられる</span></div></div>
+
+<h2>③ 止まる仕組みは3段構え</h2>
+<div class="flow">
+  <div class="node start"><b><span class="tag">アプリ①</span>上限額</b><span>AIごとに決めた金額（ドル）まで使ったら止まる</span></div>
+  <div class="arrow"></div>
+  <div class="node start"><b><span class="tag">アプリ②</span>期限日</b><span>決めた日を過ぎたら止まる（無料枠やクレジットの失効日に合わせる）</span></div>
+  <div class="arrow"></div>
+  <div class="node end"><b><span class="tag">会社側</span>残高0で拒否</b><span>先払いの残高がなくなると、会社が受け付けなくなる</span></div>
+</div>
+<p class="note">使った額はトークン数から見積もった目安です。実際の請求は各社の画面で確認してください。「あといくら使える？」と声で聞くと、いまの状況を答えます。</p>
+
+<h2>④ アプリの更新</h2>
+<div class="flow">
+  <div class="node start"><b>ホーム画面の上に青いボタンが出る</b><span>「⬆ 新しい版があります」</span></div>
+  <div class="arrow"></div>
+  <div class="node"><b>そのボタンを1回押す</b><span>ダウンロードが自動で進みます。最初の1回だけ「このソースを許可」が必要です</span></div>
+  <div class="arrow"></div>
+  <div class="node end"><b>出てきた画面で「更新」を押す</b><span>設定や記録はそのまま残ります</span></div>
+</div>
+<p class="note">会話中は更新できません。会話を止めてから押してください。</p>
+
+<h2>⑤ 各AIの登録方法</h2>
+<p class="note">設定 → 登録ガイド から、AIごとの手順を見られます。</p>
+
+</body></html>

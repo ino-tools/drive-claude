@@ -46,7 +46,7 @@ final class Gemini {
                     .put("contents", contents)
                     .put("tools", new JSONArray().put(new JSONObject().put("functionDeclarations", decls)))
                     .put("generationConfig", gen(2048, false));
-            JSONObject resp = post(p, p.geminiModel(), body);
+            JSONObject resp = post(p, p.modelOf("gemini"), body);
 
             JSONArray cands = resp.optJSONArray("candidates");
             JSONObject cand = cands == null ? null : cands.optJSONObject(0);
@@ -91,7 +91,7 @@ final class Gemini {
                 .put("contents", new JSONArray().put(new JSONObject().put("role", "user")
                         .put("parts", parts(Claude.summaryPrompt(ctx, transcript)))))
                 .put("generationConfig", gen(3000, true));
-        return Claude.parseSummary(text(post(p, p.geminiModel(), body)));
+        return Claude.parseSummary(text(post(p, p.modelOf("gemini"), body)));
     }
 
     // ---------- tools ----------
@@ -136,7 +136,7 @@ final class Gemini {
                     .put("contents", new JSONArray().put(new JSONObject().put("role", "user").put("parts", parts(q))))
                     .put("tools", new JSONArray().put(new JSONObject().put("google_search", new JSONObject())))
                     .put("generationConfig", gen(1500, false));
-            JSONObject resp = post(p, p.geminiModel(), body);
+            JSONObject resp = post(p, p.modelOf("gemini"), body);
             p.addSearch(queryCount(resp)); // 無料枠の見張り用に、実際に行われた検索の数を数える
             String t = text(resp);
             return t.isEmpty() ? "検索結果が得られませんでした" : t;
@@ -208,7 +208,7 @@ final class Gemini {
             c.setReadTimeout(90000);
             c.setDoOutput(true);
             c.setRequestProperty("content-type", "application/json");
-            c.setRequestProperty("x-goog-api-key", p.geminiKey());
+            c.setRequestProperty("x-goog-api-key", p.keyOf("gemini"));
             try (OutputStream os = c.getOutputStream()) {
                 os.write(body.toString().getBytes(StandardCharsets.UTF_8));
             }
@@ -221,7 +221,9 @@ final class Gemini {
                 if (code == 400 && msg.contains("API key not valid")) code = 401;
                 throw new Claude.ApiException(code, msg);
             }
-            return new JSONObject(resp);
+            JSONObject r = new JSONObject(resp);
+            Budget.recordGemini(p, model, r);
+            return r;
         } finally {
             c.disconnect();
         }
