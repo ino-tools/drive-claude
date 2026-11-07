@@ -437,6 +437,8 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
                         speak("AI会社側のクレジットが切れたようです。止めました。設定で別のAIに切り替えるか、クレジットを追加してください。");
                     } else if (e.code == 429) {
                         speak("利用上限に達しました。少し待ってからもう一度どうぞ。");
+                    } else if (e.code == 500 || e.code == 503 || e.code == 504) {
+                        speak("AIが混み合っています。少し待ってから、もう一度話しかけてください。");
                     } else {
                         speak("エラーが起きました。もう一度どうぞ。");
                     }

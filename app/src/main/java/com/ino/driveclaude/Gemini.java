@@ -185,7 +185,29 @@ final class Gemini {
         return sb.toString().trim();
     }
 
+    /** 混み合い(503)などの一時的なエラーは、少し待って再試行し、だめなら別のGeminiモデルに切り替える。 */
     private static JSONObject post(Prefs p, String model, JSONObject body) throws Exception {
+        java.util.List<String> models = new java.util.ArrayList<>();
+        models.add(model);
+        for (String id : Prefs.GEMINI_IDS) if (!models.contains(id)) models.add(id);
+        Claude.ApiException last = null;
+        for (String m : models) {
+            for (int attempt = 0; attempt < 2; attempt++) {
+                try {
+                    return postOne(p, m, body);
+                } catch (Claude.ApiException e) {
+                    last = e;
+                    boolean temporary = e.code == 503 || e.code == 500 || e.code == 504 || e.code == 429;
+                    String em = e.getMessage() == null ? "" : e.getMessage().toLowerCase(Locale.ROOT);
+                    if (!temporary || em.contains("billing") || em.contains("credit")) throw e;
+                    if (attempt == 0) Thread.sleep(1500);
+                }
+            }
+        }
+        throw last;
+    }
+
+    private static JSONObject postOne(Prefs p, String model, JSONObject body) throws Exception {
         try {
             return rawPost(p, model, body);
         } catch (Claude.ApiException e) {
