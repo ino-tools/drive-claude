@@ -41,6 +41,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     private LinearLayout logBox;
     private ScrollView logScroll;
     private boolean pendingStart;
+    private boolean wantRun;
     private Button updateBtn;
     private Updater.Info newer;
     private boolean updating;
@@ -167,7 +168,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         mainBtn.setAllCaps(false);
         mainBtn.setStateListAnimator(null);
         mainBtn.setOnClickListener(v -> {
-            if (VoiceService.instance == null) startVoice();
+            if (VoiceService.instance == null) { wantRun = false; startVoice(); }
         });
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(size, size);
         blp.gravity = Gravity.CENTER_HORIZONTAL;
@@ -193,6 +194,16 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         row.addView(reset, r1);
         row.addView(stop, r2);
         root.addView(row);
+
+        Button run = flatButton("🏃 ランニングモードで開始");
+        run.setBackground(rounded(0xFF1B3A2A, 12, C_OK));
+        run.setOnClickListener(v -> {
+            if (VoiceService.instance == null) { wantRun = true; startVoice(); }
+            else addLog("sys", "いま会話中です。「ランニング開始」と話しかけても始められます。");
+        });
+        LinearLayout.LayoutParams runlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56));
+        runlp.topMargin = dp(10);
+        root.addView(run, runlp);
 
         // log
         logScroll = new ScrollView(this);
@@ -261,7 +272,13 @@ public class MainActivity extends Activity implements VoiceService.Ui {
 
     private void startVoice() {
         if (prefs.activeKey().isEmpty()) {
-            showSettings();
+            new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                    .setTitle("まず無料のキーを作りましょう")
+                    .setMessage("このアプリは、Googleの無料のAI（Gemini）で動かせます。無料のキーを作る手順を図で見られます（5分ほど）。")
+                    .setPositiveButton("手順を見る", (d, w) -> startActivity(new Intent(this, HelpActivity.class).putExtra("page", "free")))
+                    .setNeutralButton("キーを入れる", (d, w) -> showEngineSettings("gemini"))
+                    .setNegativeButton("あとで", null)
+                    .show();
             return;
         }
         List<String> need = new ArrayList<>();
@@ -271,6 +288,12 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             need.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        if (wantRun) {
+            for (String perm : new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT}) {
+                if (checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED) need.add(perm);
+            }
         }
         if (!prefs.askedOptional()) {
             // 予定・連絡先・SMSの操作用（初回だけ聞く。拒否しても会話はできる）
@@ -287,7 +310,8 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         }
         synchronized (VoiceService.logBuf) { VoiceService.logBuf.clear(); }
         logBox.removeAllViews();
-        startForegroundService(new Intent(this, VoiceService.class));
+        startForegroundService(new Intent(this, VoiceService.class).putExtra(VoiceService.EXTRA_RUN, wantRun));
+        wantRun = false;
     }
 
     @Override
@@ -380,8 +404,8 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     // ---------- settings dialog ----------
 
     private void showGuideMenu() {
-        final String[] pages = {"start", "claude", "gemini", "openai", "grok"};
-        final String[] names = {"📖 はじめに：どのAIにする？／止まる仕組み", "Claude の登録方法", "Gemini の登録方法", "ChatGPT(OpenAI) の登録方法", "Grok(xAI) の登録方法"};
+        final String[] pages = {"free", "start", "claude", "gemini", "openai", "grok"};
+        final String[] names = {"🆓 完全無料で始める（Gemini）", "📖 はじめに：どのAIにする？／止まる仕組み", "Claude の登録方法", "Gemini の登録方法", "ChatGPT(OpenAI) の登録方法", "Grok(xAI) の登録方法"};
         new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
                 .setTitle("登録ガイド（図解）")
                 .setItems(names, (d, w) -> startActivity(new Intent(this, HelpActivity.class).putExtra("page", pages[w])))
@@ -576,6 +600,20 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         });
         box.addView(rate);
 
+        box.addView(label("ランニング：何キロごとにペースを知らせる？"));
+        EditText runKm = field(String.valueOf(prefs.runKm()), "1.0");
+        runKm.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        box.addView(runKm);
+        box.addView(label("ランニング：心拍の上限の目安（0なら警告なし）"));
+        EditText hrMax = field(String.valueOf(prefs.hrMax()), "例: 165");
+        hrMax.setInputType(InputType.TYPE_CLASS_NUMBER);
+        box.addView(hrMax);
+        TextView hrNote = new TextView(this);
+        hrNote.setText("心拍は、心拍ベルトや「心拍の送信（ブロードキャスト）」をオンにした時計から受け取ります。つながらなくても距離とペースは使えます。");
+        hrNote.setTextColor(C_SUB);
+        hrNote.setTextSize(12);
+        box.addView(hrNote);
+
         box.addView(label("現在地（検索のヒント）"));
         EditText city = field(prefs.city(), "例: 名古屋");
         box.addView(city);
@@ -595,6 +633,11 @@ public class MainActivity extends Activity implements VoiceService.Ui {
                 .setPositiveButton("保存", (d, w) -> {
                     prefs.save(web.isChecked(), auto.isChecked(), 0.8f + rate.getProgress() / 10f,
                             city.getText().toString(), extra.getText().toString());
+                    float rk = 1f;
+                    int hm = 0;
+                    try { rk = Float.parseFloat(runKm.getText().toString().trim()); } catch (Exception ignored) { }
+                    try { hm = Integer.parseInt(hrMax.getText().toString().trim()); } catch (Exception ignored) { }
+                    prefs.saveRun(rk, hm);
                     int ei = engineGroup.getCheckedRadioButtonId() - 2000;
                     if (ei < 0 || ei >= Prefs.ENGINES.length) ei = 0;
                     String chosen = Prefs.ENGINES[ei];

@@ -18,7 +18,7 @@ final class Prefs {
 
     String apiKey() { return sp.getString("apiKey", "").trim(); }
     String model() { return sp.getString("model", MODEL_IDS[0]); }
-    boolean webSearch() { return sp.getBoolean("webSearch", true); }
+    boolean webSearch() { return sp.getBoolean("webSearch", false); }
     boolean autoStart() { return sp.getBoolean("autoStart", false); }
     float rate() { return sp.getFloat("rate", 1.2f); }
     String city() { return sp.getString("city", "名古屋").trim(); }
@@ -76,7 +76,14 @@ final class Prefs {
         return null;
     }
 
-    String engine() { return sp.getString("engine", "claude"); }
+    // ---- ランニングモード ----
+    float runKm() { return sp.getFloat("runKm", 1.0f); }
+    int hrMax() { return sp.getInt("hrMax", 0); } // 0 = 心拍の警告なし
+    void saveRun(float km, int hrMax) {
+        sp.edit().putFloat("runKm", Math.max(0.25f, Math.min(5f, km))).putInt("hrMax", Math.max(0, Math.min(230, hrMax))).apply();
+    }
+
+    String engine() { return sp.getString("engine", "gemini"); }
     boolean gemini() { return "gemini".equals(engine()); }
     void setEngine(String e) { sp.edit().putString("engine", e).apply(); }
 
@@ -146,7 +153,7 @@ final class Prefs {
     }
 
     // ---- 上限額（USD、累計）と期限日、使った額 ----
-    double budgetOf(String e) { return sp.getFloat("budget_" + e, 5f); }   // 0 = 上限なし
+    double budgetOf(String e) { return sp.getFloat("budget_" + e, "gemini".equals(e) ? 0f : 5f); }   // 0 = 上限なし
     String expiryOf(String e) { return sp.getString("expiry_" + e, "").trim(); } // yyyy-MM-dd、空 = 期限なし
     double spentOf(String e) { return sp.getFloat("spent_" + e, 0f); }
 

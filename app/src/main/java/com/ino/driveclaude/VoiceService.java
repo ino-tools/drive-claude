@@ -70,6 +70,13 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     private int uttSeq;
     private final List<String[]> transcript = java.util.Collections.synchronizedList(new ArrayList<>());
     private long sessionStartMs;
+    private RunCoach coach;
+    private HeartRate heart;
+    private final List<String> pendingSay = new ArrayList<>();
+    static final String EXTRA_RUN = "run";
+    private static final Pattern RUN_START = Pattern.compile(".*(ランニング(モード)?(を)?(開始|スタート|始め)|走(ります|る|ってくる)|ジョギング(を)?(開始|始め)).*");
+    private static final Pattern RUN_STOP = Pattern.compile(".*(ランニング(モード)?(を)?(終了|終わり|やめ|止め)|走り終わ|走るのやめ).*");
+    private static final Pattern RUN_STATUS = Pattern.compile(".*(ペース|何キロ|距離|心拍|タイム).*");
 
     // ---------- lifecycle ----------
 
@@ -80,7 +87,11 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
         prefs = new Prefs(this);
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel(CHANNEL, "音声会話", NotificationManager.IMPORTANCE_LOW));
-        startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+        int fgType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+        if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            fgType |= ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION; // ランニングモードでGPSを使うため
+        }
+        startForeground(NOTIF_ID, buildNotification(), fgType);
         try {
             tone = new ToneGenerator(AudioManager.STREAM_MUSIC, 60);
         } catch (RuntimeException e) {
@@ -98,6 +109,8 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
             stopAll();
         } else if (intent != null && ACTION_RESET.equals(intent.getAction())) {
             resetHistory();
+        } else if (intent != null && intent.getBooleanExtra(EXTRA_RUN, false) && coach == null) {
+            h.postDelayed(this::startRun, 1500); // 音声の準備ができてから始める
         }
         return START_NOT_STICKY;
     }
@@ -108,6 +121,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     @Override
     public void onDestroy() {
         running = false;
+        endRunQuiet();
         h.removeCallbacksAndMessages(null);
         if (sr != null) { try { sr.destroy(); } catch (Exception ignored) { } sr = null; }
         if (tts != null) { try { tts.stop(); tts.shutdown(); } catch (Exception ignored) { } tts = null; }
@@ -144,12 +158,64 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     void stopAll() {
         if (running) summarizeAsync();
         running = false;
+        endRunQuiet();
         h.removeCallbacksAndMessages(null);
         if (sr != null) { try { sr.cancel(); } catch (Exception ignored) { } }
         if (tts != null) { try { tts.stop(); } catch (Exception ignored) { } }
         setState("stopped", "タップで開始");
         stopForeground(STOP_FOREGROUND_REMOVE);
         stopSelf();
+    }
+
+    // ---------- ランニングモード ----------
+
+    private void startRun() {
+        if (coach != null || !running) return;
+        if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            speak("位置情報の許可がありません。アプリのランニングボタンから始めてください。");
+            return;
+        }
+        coach = new RunCoach(this, prefs, this::announce);
+        if (!coach.start()) {
+            coach = null;
+            speak("GPSを使えませんでした。位置情報がオンか確認してください。");
+            return;
+        }
+        log("sys", "ランニングモード開始（" + prefs.runKm() + "kmごとに知らせます）");
+        if (checkSelfPermission(android.Manifest.permission.BLUETOOTH_SCAN) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            heart = new HeartRate(this, new HeartRate.Listener() {
+                @Override public void onBpm(int bpm) { if (coach != null) coach.onHeartRate(bpm); }
+                @Override public void onState(String msg) { log("sys", msg); }
+            });
+            heart.start();
+        }
+        speak("ランニングモードを始めます。" + prefs.runKm() + "キロごとにペースをお知らせします。話しかければ何でも答えます。");
+    }
+
+    private void stopRun() {
+        if (coach == null) { speak("ランニングモードは動いていません。"); return; }
+        String s = coach.stop();
+        coach = null;
+        if (heart != null) { heart.stop(); heart = null; }
+        log("sys", s);
+        speak(s);
+    }
+
+    private void endRunQuiet() {
+        if (coach != null) { coach.stop(); coach = null; }
+        if (heart != null) { heart.stop(); heart = null; }
+    }
+
+    /** ペースの案内などを話す。いま考え中・話し中なら終わるまで待つ。 */
+    private void announce(String text) {
+        log("ai", text);
+        if ("listening".equals(curState) && running) {
+            if (sr != null) { try { sr.cancel(); } catch (Exception ignored) { } }
+            speak(text);
+        } else {
+            pendingSay.add(text);
+        }
     }
 
     // ---------- UI bridge ----------
@@ -212,6 +278,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
 
     private void afterSpeech() {
         if (stopAfterSpeech) { stopAll(); return; }
+        if (running && !pendingSay.isEmpty()) { speak(pendingSay.remove(0)); return; }
         if (running) listen();
     }
 
@@ -307,6 +374,14 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
         if (transcript.isEmpty()) sessionStartMs = System.currentTimeMillis();
         transcript.add(new String[]{"ユーザー", text});
 
+        if (RUN_STOP.matcher(text).matches()) { stopRun(); return; }
+        if (coach == null && RUN_START.matcher(text).matches()) { startRun(); return; }
+        if (coach != null && text.length() <= 14 && RUN_STATUS.matcher(text).matches()) {
+            String st = coach.statusSpeech();
+            log("ai", st);
+            speak(st);
+            return;
+        }
         if (STOP_WORDS.matcher(text).matches()) {
             stopAfterSpeech = true;
             speak("終了します。");

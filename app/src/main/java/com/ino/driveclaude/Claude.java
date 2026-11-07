@@ -131,6 +131,11 @@ final class Claude {
         if ("openai".equals(p.engine()) || "grok".equals(p.engine())) {
             s.append("- このAIにはWeb検索がない。最新情報や天気などは分からないと正直に伝える。\n");
         }
+        if (!p.webSearch()) s.append("- Web検索は使えない設定。最新情報は分からないと正直に伝える。\n");
+        RunCoach rc = RunCoach.current;
+        if (rc != null && rc.running()) {
+            s.append("【ランニングモード】ユーザーは今走っている。あなたはトレーニング中の話し相手でコーチ。息が上がっているので返事は1〜2文で短く、励ましや気分転換の雑談、ペース配分や心拍に基づく助言をする。状況: ").append(rc.promptInfo()).append("\n");
+        }
         s.append("現在日時: ").append(f.format(new Date())).append("（日本時間）。");
         s.append("ユーザーのおおよその現在地: ").append(p.city().isEmpty() ? "不明" : p.city()).append("。\n");
         s.append("現在の設定: AI=").append(p.engineLabel())

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>完全無料で始める</title><style>
+  :root{--bg:#0d1117;--fg:#e6edf3;--sub:#8b949e;--card:#161b22;--line:#30363d;--acc:#d97757;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--blue:#388bfd}
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px 16px 40px;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,"Noto Sans JP","Hiragino Sans",sans-serif}
+  h1{font-size:21px;line-height:1.4;margin:0 0 12px}
+  h2{font-size:17px;margin:30px 0 12px;padding-left:10px;border-left:4px solid var(--acc)}
+  p{margin:8px 0}
+  .lead{background:#1f6feb22;border:1px solid #1f6feb77;border-radius:12px;padding:12px 14px}
+  .lead b{color:#79c0ff}
+  .cols{display:flex;gap:10px}
+  .col{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .col h3{margin:0 0 4px;font-size:15px;text-align:center}
+  .col.free h3{color:var(--sub)}
+  .col.paid{border-color:#3fb95088}
+  .col.paid h3{color:var(--ok)}
+  .row{font-size:13px;line-height:1.5;padding:7px 0;border-top:1px dashed var(--line)}
+  .row small{display:block;color:var(--sub);font-size:11px}
+  .ok{color:var(--ok);font-weight:700}
+  .ng{color:var(--bad);font-weight:700}
+  .mid{color:var(--warn);font-weight:700}
+  .flow{display:flex;flex-direction:column;align-items:stretch}
+  .node{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .node b{display:block;margin-bottom:2px}
+  .node span{font-size:13px;color:var(--sub)}
+  .node.end{border-color:#3fb95088;background:#3fb95014}
+  .node.start{border-color:#d9775788}
+  .arrow{align-self:center;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:13px solid var(--sub);margin:7px 0}
+  .tag{display:inline-block;font-size:11px;background:#30363d;border-radius:6px;padding:1px 7px;margin-right:6px;color:var(--fg);vertical-align:1px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+  td{padding:8px 6px;border-top:1px solid var(--line)}
+  td:last-child{text-align:right;font-weight:700;white-space:nowrap}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  .steps li{counter-increment:s;position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 52px;margin-bottom:8px;font-size:15px}
+  .steps li:before{content:counter(s);position:absolute;left:13px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--acc);color:#fff;text-align:center;line-height:28px;font-weight:700}
+  .steps li small{display:block;color:var(--sub);font-size:12px;line-height:1.5;margin-top:2px}
+  .mock{display:block;margin-top:6px;background:#0d1117;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--sub)}
+  .mock b{color:var(--fg)}
+  a.btn{display:block;text-align:center;background:var(--acc);color:#fff;text-decoration:none;padding:14px;border-radius:12px;font-weight:700;margin:12px 0 4px}
+  .gauge{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .gauge .num{font-size:22px;font-weight:700}
+  .gauge .num small{font-size:13px;color:var(--sub);font-weight:400}
+  .bar{height:16px;background:#30363d;border-radius:8px;overflow:hidden;margin:8px 0}
+  .bar i{display:block;height:100%;background:var(--ok);min-width:3px}
+  .scale{display:flex;justify-content:space-between;font-size:11px;color:var(--sub)}
+  .note{font-size:13px;color:var(--sub)}
+  ul.warn{padding-left:20px;margin:6px 0}
+  ul.warn li{margin:8px 0;font-size:14px}
+
+  table.cmp td,table.cmp th{font-size:12px;padding:7px 4px;border-top:1px solid var(--line);text-align:center;vertical-align:top}
+  table.cmp th{color:var(--sub);font-weight:600}
+  table.cmp td:first-child,table.cmp th:first-child{text-align:left;font-weight:700;white-space:normal}
+  table.cmp td:last-child{text-align:center;font-weight:400;white-space:normal}
+  .three{display:flex;flex-direction:column;gap:0}
+</style></head><body>
+<h1>完全無料で始める<br>（Gemini）</h1>
+
+<div class="lead"><b>最初は完全無料で：</b>GoogleのAI「Gemini」の<b>無料枠</b>なら、<b>お金も、カードの登録もいりません</b>。このアプリはまずこれで動くようにしてあります。</div>
+
+<h2>① 無料枠でできること・できないこと</h2>
+<div class="cols">
+  <div class="col paid">
+    <h3>できる</h3>
+    <div class="row"><span class="ok">○</span> 声での会話</div>
+    <div class="row"><span class="ok">○</span> メモ・予定・SMS・音楽・ランニングの案内</div>
+    <div class="row"><span class="ok">○</span> 料金は0円</div>
+  </div>
+  <div class="col free">
+    <h3>制限</h3>
+    <div class="row"><span class="ng">✕</span> Web検索</div>
+    <div class="row"><span class="mid">△</span> 回数や速さに制限（使いすぎると少し待つ）</div>
+    <div class="row"><span class="mid">△</span> 会話内容がGoogleの改善に使われることがある</div>
+  </div>
+</div>
+<p class="note">ランニングのペース案内（キロごとの声）は、AIを使わずスマホの中で作るので、制限に関係なく使えます。</p>
+
+<h2>② 無料キーの作り方（5分）</h2>
+<ol class="steps"><li>スマホのChromeで AI Studio を開く<small>いつものGoogleアカウントでログインします。</small><span class="mock">aistudio.google.com</span></li><li><b>「Get API key（APIキーを取得）」</b>を押す<small>画面の左側のメニューか、上のほうにあります。</small></li><li><b>「Create API key（キーを作成）」</b>を押す<small>プロジェクトは「新しいプロジェクト」か、すでにあるものを選びます。<b>お支払いの設定は不要</b>です。</small></li><li>表示されたキー（AIza…）を<b>コピー</b><small>長押しでコピーできます。</small></li><li>このアプリで「⚙ 設定」→「AIごとの設定」→ Gemini を開き、キーを貼って保存<small>上限額は0（上限なし）のままで大丈夫です。無料枠なので課金されません。</small></li></ol>
+<a class="btn" href="https://aistudio.google.com/apikey">AI Studio でキーを作る</a>
+
+<h2>③ うまく動かないとき</h2>
+<ul class="warn">
+<li>「利用上限」と言われたら、数分待ってからもう一度話しかけてください（無料枠の回数制限です）。</li>
+<li>モデルによっては無料枠がないことがあります。エラーが続くときは、設定で別のGeminiモデルを選んでください。</li>
+<li>キーは人に見せたり、チャットに貼ったりしないでください。</li>
+<li>画面の名前や場所は、Google側の更新で変わることがあります。</li>
+</ul>
+
+<h2>④ もっと使いたくなったら</h2>
+<p class="note">Web検索がほしいときや回数制限がきついときは、設定の「登録ガイド」から有料枠（先払いで、使いすぎない仕組み）を選べます。</p>
+
+</body></html>
