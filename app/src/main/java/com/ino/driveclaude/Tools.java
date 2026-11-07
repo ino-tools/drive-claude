@@ -5,6 +5,7 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -58,6 +59,21 @@ final class Tools {
                         .put("engine", new JSONObject().put("type", "string").put("enum", new JSONArray().put("claude").put("gemini").put("openai").put("grok"))
                                 .put("description", "使うAI。claude, gemini, openai(ChatGPT), grok のどれか。次の発言から切り替わる"))));
         a.put(tool("check_usage", "各AIの使った金額（目安）・上限額・期限を取得する。「あといくら使える？」などに答える。", new JSONObject()));
+        a.put(tool("open_app", "端末のアプリを名前で開く（例: LINE、Gmail、カメラ）。", new JSONObject().put("name", p("string", "アプリ名")), "name"));
+        a.put(tool("play_music", "音楽を検索して再生する。", new JSONObject()
+                .put("service", new JSONObject().put("type", "string").put("enum", new JSONArray().put("spotify").put("youtube_music").put("youtube")).put("description", "使うサービス"))
+                .put("query", p("string", "曲名・アーティスト名・ジャンルなど")), "service", "query"));
+        a.put(tool("media_control", "再生中の音楽・動画の操作。", new JSONObject()
+                .put("action", new JSONObject().put("type", "string").put("enum", new JSONArray().put("play").put("pause").put("next").put("previous").put("volume_up").put("volume_down")))
+                , "action"));
+        a.put(tool("navigate", "Googleマップで目的地への道案内を始める。", new JSONObject()
+                .put("destination", p("string", "目的地の名前や住所"))
+                .put("mode", new JSONObject().put("type", "string").put("enum", new JSONArray().put("walking").put("driving").put("transit").put("bicycling")).put("description", "移動手段。既定は徒歩")), "destination"));
+        a.put(tool("set_timer", "タイマーをセットする。", new JSONObject().put("seconds", p("integer", "秒数")).put("label", p("string", "名前（任意）")), "seconds"));
+        a.put(tool("make_call", "電話をかける。必ず事前に宛先を読み上げてユーザーの了承を得てから呼ぶ。", new JSONObject()
+                .put("phone_number", p("string", "電話番号"))
+                .put("recipient_name", p("string", "宛先の名前"))
+                .put("user_confirmed", p("boolean", "了承されたらtrue")), "phone_number", "user_confirmed"));
         a.put(tool("add_memo", "メモ・やることを保存する。", new JSONObject().put("text", p("string", "メモの内容")), "text"));
         a.put(tool("list_memos", "保存したメモを番号付きで取得する。", new JSONObject()));
         a.put(tool("delete_memo", "メモを番号で削除する（済んだやること等）。", new JSONObject().put("number", p("integer", "list_memosの番号")), "number"));
@@ -104,6 +120,12 @@ final class Tools {
                     for (String e : Prefs.ENGINES) sb.append(Budget.line(prefs, e)).append('\n');
                     return sb.toString();
                 }
+                case "open_app": return openApp(c, in.optString("name"));
+                case "play_music": return playMusic(c, in.optString("service"), in.optString("query"));
+                case "media_control": return mediaControl(c, in.optString("action"));
+                case "navigate": return navigate(c, in.optString("destination"), in.optString("mode", "walking"));
+                case "set_timer": return setTimer(c, in.optInt("seconds", 0), in.optString("label"));
+                case "make_call": return makeCall(c, in);
                 case "add_memo":
                     Store.addMemo(c, in.optString("text"));
                     return "保存しました";
@@ -311,5 +333,108 @@ final class Tools {
         ArrayList<String> parts = sm.divideMessage(msg);
         sm.sendMultipartTextMessage(number, null, parts, null, null);
         return "送信しました（" + in.optString("recipient_name", number) + "）";
+    }
+
+    // ---------- アプリ操作・音楽・電話 ----------
+
+    private static String launch(Context c, Intent it) {
+        try {
+            it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            c.startActivity(it);
+            return "ok";
+        } catch (Exception e) {
+            return "開けませんでした: " + e.getMessage();
+        }
+    }
+
+    private static String bgNote(Context c) {
+        return android.provider.Settings.canDrawOverlays(c) ? "" :
+                "（画面がオフのときは開けないことがあります。設定で「他のアプリの上に表示」を許可すると安定します）";
+    }
+
+    private static String openApp(Context c, String name) {
+        android.content.pm.PackageManager pm = c.getPackageManager();
+        Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        String want = name.toLowerCase(java.util.Locale.ROOT).trim();
+        for (android.content.pm.ResolveInfo ri : pm.queryIntentActivities(main, 0)) {
+            String label = ri.loadLabel(pm).toString().toLowerCase(java.util.Locale.ROOT);
+            if (!want.isEmpty() && (label.contains(want) || want.contains(label))) {
+                Intent it = pm.getLaunchIntentForPackage(ri.activityInfo.packageName);
+                if (it != null) {
+                    String r = launch(c, it);
+                    return "ok".equals(r) ? ri.loadLabel(pm) + "を開きました" + bgNote(c) : r;
+                }
+            }
+        }
+        return "「" + name + "」というアプリが見つかりませんでした";
+    }
+
+    private static String playMusic(Context c, String service, String q) {
+        if (q.isEmpty()) return "曲名などが空です";
+        String pkg = "spotify".equals(service) ? "com.spotify.music"
+                : "youtube_music".equals(service) ? "com.google.android.apps.youtube.music" : "com.google.android.youtube";
+        try { c.getPackageManager().getPackageInfo(pkg, 0); }
+        catch (Exception e) { return "そのアプリが入っていません"; }
+        Intent it = new Intent(android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
+                .setPackage(pkg)
+                .putExtra(android.app.SearchManager.QUERY, q)
+                .putExtra(android.provider.MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*");
+        String r = launch(c, it);
+        if (!"ok".equals(r)) {
+            Intent s = "youtube".equals(service)
+                    ? new Intent(Intent.ACTION_SEARCH).setPackage(pkg).putExtra(android.app.SearchManager.QUERY, q)
+                    : new Intent(Intent.ACTION_VIEW, Uri.parse("spotify:search:" + Uri.encode(q))).setPackage(pkg);
+            r = launch(c, s);
+        }
+        return "ok".equals(r) ? "「" + q + "」を探して再生を始めました。うまく再生されないときは、アプリ側で検索結果が開いています。" + bgNote(c) : r;
+    }
+
+    private static String mediaControl(Context c, String action) {
+        android.media.AudioManager am = c.getSystemService(android.media.AudioManager.class);
+        int key;
+        switch (action) {
+            case "play": key = android.view.KeyEvent.KEYCODE_MEDIA_PLAY; break;
+            case "pause": key = android.view.KeyEvent.KEYCODE_MEDIA_PAUSE; break;
+            case "next": key = android.view.KeyEvent.KEYCODE_MEDIA_NEXT; break;
+            case "previous": key = android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS; break;
+            case "volume_up":
+                am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_RAISE, 0);
+                return "音量を上げました";
+            case "volume_down":
+                am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_LOWER, 0);
+                return "音量を下げました";
+            default: return "その操作はできません";
+        }
+        am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, key));
+        am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, key));
+        return "操作しました";
+    }
+
+    private static String navigate(Context c, String dest, String mode) {
+        if (dest.isEmpty()) return "目的地が空です";
+        String m = "driving".equals(mode) ? "d" : "transit".equals(mode) ? "r" : "bicycling".equals(mode) ? "b" : "w";
+        Intent it = new Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + Uri.encode(dest) + "&mode=" + m))
+                .setPackage("com.google.android.apps.maps");
+        String r = launch(c, it);
+        return "ok".equals(r) ? "「" + dest + "」への道案内を開きました" + bgNote(c) : r;
+    }
+
+    private static String setTimer(Context c, int sec, String label) {
+        if (sec <= 0) return "秒数が正しくありません";
+        Intent it = new Intent(android.provider.AlarmClock.ACTION_SET_TIMER)
+                .putExtra(android.provider.AlarmClock.EXTRA_LENGTH, sec)
+                .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label)
+                .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, true);
+        String r = launch(c, it);
+        return "ok".equals(r) ? sec + "秒のタイマーをセットしました" : r;
+    }
+
+    private static String makeCall(Context c, JSONObject in) {
+        if (!in.optBoolean("user_confirmed", false)) return "まだ発信していません。先に宛先を読み上げて、了承を得てください。";
+        if (!granted(c, Manifest.permission.CALL_PHONE)) return "電話の権限がありません。アプリの設定で電話を許可してください。";
+        String number = in.optString("phone_number").replaceAll("[^0-9+]", "");
+        if (number.isEmpty()) return "電話番号が空です";
+        String r = launch(c, new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + number)));
+        return "ok".equals(r) ? in.optString("recipient_name", number) + "に発信しました" : r;
     }
 }

@@ -125,7 +125,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
                 new Intent(this, VoiceService.class).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat)
-                .setContentTitle("ドライブClaude")
+                .setContentTitle("Talk to AI")
                 .setContentText("音声会話中（「ストップ」で終了）")
                 .setOngoing(true)
                 .setContentIntent(open)

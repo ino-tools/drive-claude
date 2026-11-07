@@ -116,7 +116,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("🚗 ドライブClaude");
+        title.setText("🎧 Talk to AI");
         title.setTextColor(C_FG);
         title.setTextSize(20);
         title.setTypeface(Typeface.DEFAULT_BOLD);
@@ -276,7 +276,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
             // 予定・連絡先・SMSの操作用（初回だけ聞く。拒否しても会話はできる）
             prefs.setAskedOptional();
             for (String perm : new String[]{Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR,
-                    Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS}) {
+                    Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS, Manifest.permission.CALL_PHONE}) {
                 if (checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED) need.add(perm);
             }
         }
@@ -299,7 +299,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
             startVoice();
         } else if (!micOk) {
             pendingStart = false;
-            addLog("sys", "マイクを許可しないと会話できません。設定 → アプリ → ドライブClaude → 権限 から許可してください。");
+            addLog("sys", "マイクを許可しないと会話できません。設定 → アプリ → Talk to AI → 権限 から許可してください。");
         }
     }
 
@@ -539,6 +539,15 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
         hlp.topMargin = dp(8);
         box.addView(help, hlp);
+
+        Button overlay = flatButton(android.provider.Settings.canDrawOverlays(this)
+                ? "✅ 画面オフでもアプリを開ける（許可済み）" : "📱 画面オフでも音楽アプリ等を開けるようにする");
+        overlay.setTextSize(13);
+        overlay.setOnClickListener(v -> startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:" + getPackageName()))));
+        LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+        olp.topMargin = dp(10);
+        box.addView(overlay, olp);
 
         CheckBox web = new CheckBox(this);
         web.setText("Web検索を使う（Claude・Geminiのみ）");
