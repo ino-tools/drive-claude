@@ -31,13 +31,14 @@ import java.util.List;
 
 public class MainActivity extends Activity implements VoiceService.Ui {
 
-    private static final int C_BG = 0xFF0D1117, C_FG = 0xFFE6EDF3, C_SUB = 0xFF8B949E, C_CARD = 0xFF161B22,
-            C_ACC = 0xFFD97757, C_OK = 0xFF3FB950, C_WARN = 0xFFD29922, C_SPK = 0xFF388BFD, C_OFF = 0xFF30363D;
+    private static final int C_BG = 0xFF050816, C_FG = 0xFFE8F4FF, C_SUB = 0xFF7F90B5, C_CARD = 0xFF0E1736,
+            C_ACC = 0xFF2EC4FF, C_OK = 0xFF2EF2C0, C_WARN = 0xFFB48CFF, C_SPK = 0xFF3CB4FF, C_OFF = 0xFF22336E;
     private static final int REQ_PERM = 10;
 
     private Prefs prefs;
     private TextView status;
-    private Button mainBtn;
+    private OrbView orb;
+    private TextView stateLabel;
     private LinearLayout logBox;
     private ScrollView logScroll;
     private boolean pendingStart;
@@ -102,7 +103,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         b.setTextColor(C_FG);
         b.setTextSize(17);
         b.setAllCaps(false);
-        b.setBackground(rounded(C_CARD, 12, C_OFF));
+        b.setBackground(rounded(C_CARD, 14, C_OFF));
         b.setStateListAnimator(null);
         return b;
     }
@@ -110,14 +111,14 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     private void buildUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(C_BG);
+        root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF050816, 0xFF0B1436}));
         root.setPadding(dp(16), dp(16), dp(16), dp(16));
 
         // header
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("🎧 Talk to AI");
+        title.setText("Talk to AI");
         title.setTextColor(C_FG);
         title.setTextSize(20);
         title.setTypeface(Typeface.DEFAULT_BOLD);
@@ -140,7 +141,8 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         updateBtn.setTextColor(Color.WHITE);
         updateBtn.setTextSize(15);
         updateBtn.setStateListAnimator(null);
-        updateBtn.setBackground(rounded(0xFF1F6FEB, 12, 0));
+        updateBtn.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xFF2EC4FF, 0xFF5B3CFF}));
+        ((GradientDrawable) updateBtn.getBackground()).setCornerRadius(dp(14));
         updateBtn.setVisibility(View.GONE);
         updateBtn.setOnClickListener(v -> startUpdate());
         LinearLayout.LayoutParams ulp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
@@ -150,31 +152,34 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         // status
         status = new TextView(this);
         status.setTextColor(C_FG);
-        status.setTextSize(24);
+        status.setTextSize(20);
         status.setTypeface(Typeface.DEFAULT_BOLD);
         status.setGravity(Gravity.CENTER);
-        status.setMinHeight(dp(64));
+        status.setMinHeight(dp(40));
         status.setMaxLines(3);
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        slp.topMargin = dp(12);
+        slp.topMargin = dp(6);
         root.addView(status, slp);
 
-        // big button
-        int size = Math.min(dp(280), (int) (getResources().getDisplayMetrics().widthPixels * 0.68));
-        mainBtn = new Button(this);
-        mainBtn.setTextColor(Color.WHITE);
-        mainBtn.setTextSize(28);
-        mainBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        mainBtn.setAllCaps(false);
-        mainBtn.setStateListAnimator(null);
-        mainBtn.setOnClickListener(v -> {
+        // 球体（タップで開始）
+        orb = new OrbView(this);
+        orb.setOnClickListener(v -> {
             if (VoiceService.instance == null) { wantRun = false; startVoice(); }
         });
+        int size = Math.min(dp(340), (int) (getResources().getDisplayMetrics().widthPixels * 0.92));
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(size, size);
         blp.gravity = Gravity.CENTER_HORIZONTAL;
-        blp.topMargin = dp(8);
-        blp.bottomMargin = dp(16);
-        root.addView(mainBtn, blp);
+        blp.topMargin = dp(0);
+        root.addView(orb, blp);
+        stateLabel = new TextView(this);
+        stateLabel.setTextColor(C_ACC);
+        stateLabel.setTextSize(14);
+        stateLabel.setLetterSpacing(0.15f);
+        stateLabel.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams sllp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        sllp.topMargin = dp(-28);
+        sllp.bottomMargin = dp(14);
+        root.addView(stateLabel, sllp);
 
         // reset / stop
         LinearLayout row = new LinearLayout(this);
@@ -196,7 +201,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         root.addView(row);
 
         Button run = flatButton("🏃 ランニングモードで開始");
-        run.setBackground(rounded(0xFF1B3A2A, 12, C_OK));
+        run.setBackground(rounded(0xFF0A2A36, 14, C_OK));
         run.setOnClickListener(v -> {
             if (VoiceService.instance == null) { wantRun = true; startVoice(); }
             else addLog("sys", "いま会話中です。「ランニング開始」と話しかけても始められます。");
@@ -226,12 +231,12 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.topMargin = dp(8);
         if ("me".equals(kind)) {
-            t.setBackground(rounded(0x551F6FEB, 12, 0));
+            t.setBackground(rounded(0x552EC4FF, 14, 0));
             t.setPadding(dp(12), dp(8), dp(12), dp(8));
             lp.gravity = Gravity.END;
             lp.leftMargin = dp(40);
         } else if ("ai".equals(kind)) {
-            t.setBackground(rounded(C_CARD, 12, 0));
+            t.setBackground(rounded(C_CARD, 14, C_OFF));
             t.setPadding(dp(12), dp(8), dp(12), dp(8));
             lp.gravity = Gravity.START;
             lp.rightMargin = dp(40);
@@ -247,19 +252,15 @@ public class MainActivity extends Activity implements VoiceService.Ui {
 
     @Override
     public void onState(String state, String text) {
-        int color;
         String label;
         switch (state) {
-            case "listening": color = C_OK; label = "聞いてます"; break;
-            case "thinking": color = C_WARN; label = "考え中"; break;
-            case "speaking": color = C_SPK; label = "話してます"; break;
-            default: color = C_ACC; label = "開始"; break;
+            case "listening": label = "LISTENING  聞いてます"; break;
+            case "thinking": label = "THINKING  考え中"; break;
+            case "speaking": label = "SPEAKING  話してます"; break;
+            default: label = "TAP TO START  タップで開始"; break;
         }
-        GradientDrawable g = new GradientDrawable();
-        g.setShape(GradientDrawable.OVAL);
-        g.setColor(color);
-        mainBtn.setBackground(g);
-        mainBtn.setText(label);
+        orb.setState(state);
+        stateLabel.setText(label);
         status.setText(text);
     }
 

@@ -7,38 +7,82 @@
     android:viewportHeight="108">
     <!-- 外側のリング -->
     <path
-        android:pathData="M54,24 A30,30 0 1,1 53.99,24 Z"
-        android:strokeWidth="3"
-        android:strokeLineCap="round">
-        <aapt:attr name="android:strokeColor">
+        android:pathData="M16,54 a38,38 0 1,0 76,0 a38,38 0 1,0 -76,0 z"
+        android:strokeColor="#477DEBFF"
+        android:strokeWidth="1" />
+    <path
+        android:pathData="M10,54 a44,44 0 1,0 88,0 a44,44 0 1,0 -88,0 z"
+        android:strokeColor="#1F7DEBFF"
+        android:strokeWidth="1" />
+    <!-- 球体（ガラス） -->
+    <path android:pathData="M27,54 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0 z">
+        <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="24"
-                android:startY="24"
-                android:endX="84"
-                android:endY="84"
-                android:type="linear">
-                <item android:color="#FF00E5FF" android:offset="0.0" />
-                <item android:color="#FF7C4DFF" android:offset="0.55" />
-                <item android:color="#FFFF2D95" android:offset="1.0" />
+                android:centerX="43"
+                android:centerY="40"
+                android:gradientRadius="46"
+                android:type="radial">
+                <item android:color="#EBFFFFFF" android:offset="0.0" />
+                <item android:color="#99C4F8FF" android:offset="0.22" />
+                <item android:color="#6137C8FF" android:offset="0.55" />
+                <item android:color="#B35B3CFF" android:offset="0.85" />
+                <item android:color="#D92A1A9A" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- 声の波形（5本） -->
+    <!-- 球体の中：光る芯と声の波形 -->
+    <group>
+        <clip-path android:pathData="M27,54 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0 z" />
+        <path android:pathData="M27,54 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0 z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:centerX="58"
+                    android:centerY="60"
+                    android:gradientRadius="16"
+                    android:type="radial">
+                    <item android:color="#F2FFFFFF" android:offset="0.0" />
+                    <item android:color="#997DEBFF" android:offset="0.4" />
+                    <item android:color="#007DEBFF" android:offset="1.0" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:pathData="M30,55 C36,55 38,45 43,45 C49,45 49,66 54,66 C59,66 60,40 65,40 C70,40 70,55 78,55"
+            android:strokeColor="#807DEBFF"
+            android:strokeWidth="5"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M30,55 C36,55 38,45 43,45 C49,45 49,66 54,66 C59,66 60,40 65,40 C70,40 70,55 78,55"
+            android:strokeColor="#EBFFFFFF"
+            android:strokeWidth="2.4"
+            android:strokeLineCap="round" />
+    </group>
+    <!-- 縁の反射光 -->
     <path
-        android:pathData="M34,47 L34,61 M44,41 L44,67 M54,34 L54,74 M64,41 L64,67 M74,47 L74,61"
-        android:strokeWidth="5.5"
-        android:strokeLineCap="round">
+        android:pathData="M27.8,54 a26.2,26.2 0 1,0 52.4,0 a26.2,26.2 0 1,0 -52.4,0 z"
+        android:strokeWidth="1.6">
         <aapt:attr name="android:strokeColor">
             <gradient
                 android:startX="30"
-                android:startY="34"
-                android:endX="78"
-                android:endY="74"
+                android:startY="30"
+                android:endX="80"
+                android:endY="82"
                 android:type="linear">
-                <item android:color="#FF00E5FF" android:offset="0.0" />
-                <item android:color="#FF7C4DFF" android:offset="0.5" />
-                <item android:color="#FFFF2D95" android:offset="1.0" />
+                <item android:color="#007DEBFF" android:offset="0.55" />
+                <item android:color="#F29FFFEA" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
+    <!-- 節（ノード） -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M41,45 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M52,66 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M63,40 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0z" />
+    <!-- ハイライト -->
+    <group android:pivotX="44" android:pivotY="38" android:rotation="-35">
+        <path android:fillColor="#8CFFFFFF" android:pathData="M34,38 a10,5 0 1,0 20,0 a10,5 0 1,0 -20,0z" />
+    </group>
+    <!-- きらめき -->
+    <path
+        android:fillColor="#E6FFFFFF"
+        android:pathData="M75,30 l1.2,3.8 l3.8,1.2 l-3.8,1.2 l-1.2,3.8 l-1.2,-3.8 l-3.8,-1.2 l3.8,-1.2z" />
 </vector>
