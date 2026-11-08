@@ -29,18 +29,40 @@ final class OrbView extends View {
     private float pWave, pWave2, pBreathe, pRipple, pArc, pMod;
     // なめらかに近づく値
     private float amp = 0.10f, speed = 0.35f, rip = 0f, think = 0f;
-    private final float[] col = {0xC4, 0xF8, 0xFF, 0x37, 0xC8, 0xFF, 0x5B, 0x3C, 0xFF, 0x35, 0xD4, 0xFF};
+    private final float[] col = {0xD6, 0xE4, 0xFF, 0x4F, 0x8D, 0xFF, 0x8E, 0x4D, 0xFF, 0x5B, 0x9B, 0xFF};
 
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
     private final Path clip = new Path();
     private final RectF rect = new RectF();
 
-    // 状態ごとの色 {明るい芯, 中間, 縁, ハロ}
-    private static final int[] IDLE = {0xFFC4F8FF, 0xFF37C8FF, 0xFF5B3CFF, 0xFF35D4FF};
-    private static final int[] LISTEN = {0xFFD2FFF0, 0xFF2EF2C0, 0xFF1D7BFF, 0xFF2EF2C0};
-    private static final int[] THINK = {0xFFEBD8FF, 0xFFB48CFF, 0xFF5A2BD6, 0xFFB48CFF};
-    private static final int[] SPEAK = {0xFFD6F0FF, 0xFF3CB4FF, 0xFF6A3CFF, 0xFF4CC2FF};
+    // AIごとのイメージカラー {明るい芯, 中間, 縁, ハロ}。base＝ふだん、alt＝話している時（2色目）
+    private static final int[][] CLAUDE = {{0xFFFFE3D2, 0xFFE8825E, 0xFF9A3E22, 0xFFE8825E}, {0xFFFFF0C8, 0xFFFFB05C, 0xFFC8502A, 0xFFFFA060}};
+    private static final int[][] GEMINI = {{0xFFD6E4FF, 0xFF4F8DFF, 0xFF8E4DFF, 0xFF5B9BFF}, {0xFFFFDDF0, 0xFFB87CFF, 0xFFE0508A, 0xFFB07CFF}};
+    private static final int[][] OPENAI = {{0xFFCFFFEC, 0xFF19C99A, 0xFF0A6B58, 0xFF19C99A}, {0xFFE8FFF6, 0xFF4EE8B8, 0xFF12806A, 0xFF4EE8B8}};
+    private static final int[][] GROK = {{0xFFF2F4F8, 0xFFAEB6C6, 0xFF3A4152, 0xFFB8C0D0}, {0xFFFFFFFF, 0xFFD8DEEA, 0xFF596177, 0xFFFFFFFF}};
+    private int[][] theme = GEMINI;
+
+    private static int[][] themeOf(String engine) {
+        switch (engine) {
+            case "claude": return CLAUDE;
+            case "openai": return OPENAI;
+            case "grok": return GROK;
+            default: return GEMINI;
+        }
+    }
+
+    /** そのAIのイメージカラー（文字やボタンの色に使う）。 */
+    static int accent(String engine) { return themeOf(engine)[0][1]; }
+
+    void setTheme(String engine) { theme = themeOf(engine); }
+
+    private static int mix(int x, int y, float f) {
+        return Color.rgb(
+                Math.round(Color.red(x) + (Color.red(y) - Color.red(x)) * f),
+                Math.round(Color.green(x) + (Color.green(y) - Color.green(x)) * f),
+                Math.round(Color.blue(x) + (Color.blue(y) - Color.blue(x)) * f));
+    }
 
     OrbView(Context c) {
         super(c);
@@ -72,13 +94,12 @@ final class OrbView extends View {
         super.onDetachedFromWindow();
     }
 
+    /** いまの状態の色。待機＝基本色、話す＝2色目、聞く・考えるはその間。 */
     private int[] target() {
-        switch (state) {
-            case "listening": return LISTEN;
-            case "thinking": return THINK;
-            case "speaking": return SPEAK;
-            default: return IDLE;
-        }
+        float f = "speaking".equals(state) ? 1f : "listening".equals(state) ? 0.5f : "thinking".equals(state) ? 0.25f : 0f;
+        int[] out = new int[4];
+        for (int i = 0; i < 4; i++) out[i] = mix(theme[0][i], theme[1][i], f);
+        return out;
     }
 
     private static int a(int color, float alpha) {

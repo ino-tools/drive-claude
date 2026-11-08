@@ -39,6 +39,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     private TextView status;
     private OrbView orb;
     private TextView stateLabel;
+    private Button run;
     private LinearLayout logBox;
     private ScrollView logScroll;
     private boolean pendingStart;
@@ -125,13 +126,15 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         title.setTextSize(20);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        Button notes = flatButton("📝 記録");
-        notes.setTextSize(15);
+        Button notes = flatButton("📝");
+        notes.setTextSize(22);
+        notes.setPadding(0, 0, 0, 0);
+        notes.setContentDescription("記録");
         notes.setOnClickListener(v -> startActivity(new Intent(this, NotesActivity.class)));
-        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44));
+        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(dp(48), dp(44));
         nlp.rightMargin = dp(8);
         header.addView(notes, nlp);
-        Button settings = flatButton("⚙");
+        Button settings = flatButton("\u2699\uFE0F");
         settings.setTextSize(22);
         settings.setPadding(0, 0, 0, 0);
         settings.setContentDescription("設定");
@@ -204,9 +207,8 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         row.addView(stop, r2);
         root.addView(row);
 
-        Button run = flatButton("🏃 ランニングモードで開始");
-        run.setBackground(rounded(0xFF0A2A36, 14, C_OK));
-        run.setOnClickListener(v -> {
+        run = flatButton("🏃 ランニングモードで開始");
+                run.setOnClickListener(v -> {
             if (VoiceService.instance == null) { wantRun = true; startVoice(); }
             else addLog("sys", "いま会話中です。「ランニング開始」と話しかけても始められます。");
         });
@@ -263,6 +265,9 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     private void updateBrand() {
         String e = prefs.engine();
         orb.setBrand(Prefs.ENGINE_SPOKEN[Prefs.engineIndex(e)].toUpperCase(java.util.Locale.ROOT), prefs.modelOf(e));
+        orb.setTheme(e);
+        stateLabel.setTextColor(OrbView.accent(e));
+        run.setBackground(rounded(0xFF0A1A2A, 14, OrbView.accent(e)));
     }
 
     // ---------- VoiceService.Ui ----------
