@@ -66,6 +66,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     protected void onResume() {
         super.onResume();
         VoiceService.ui = this;
+        updateBrand();
         logBox.removeAllViews();
         List<String[]> copy;
         synchronized (VoiceService.logBuf) { copy = new ArrayList<>(VoiceService.logBuf); }
@@ -248,6 +249,12 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         logScroll.post(() -> logScroll.fullScroll(View.FOCUS_DOWN));
     }
 
+    /** 球体の奥にうっすら映す、使っているAIの名前。 */
+    private void updateBrand() {
+        String e = prefs.engine();
+        orb.setBrand(Prefs.ENGINE_SPOKEN[Prefs.engineIndex(e)].toUpperCase(java.util.Locale.ROOT), prefs.modelOf(e));
+    }
+
     // ---------- VoiceService.Ui ----------
 
     @Override
@@ -260,6 +267,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
             default: label = "TAP TO START  タップで開始"; break;
         }
         orb.setState(state);
+        updateBrand(); // 声でAIを切り替えたときも反映
         stateLabel.setText(label);
         status.setText(text);
     }
@@ -512,6 +520,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
                     boolean badDate = !ex.isEmpty() && !Prefs.validDate(ex);
                     prefs.saveLimit(e, b, badDate ? "" : ex);
                     if (reset.isChecked()) prefs.resetSpent(e);
+                    updateBrand();
                     if ("claude".equals(e) && !k.isEmpty() && !k.startsWith("sk-ant-api")) {
                         addLog("sys", "注意: Anthropicのキーは通常 sk-ant-api03- で始まります。console.anthropic.com の API Keys で発行したキーか確認してください。");
                     } else if (badDate) {
@@ -643,6 +652,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
                     if (ei < 0 || ei >= Prefs.ENGINES.length) ei = 0;
                     String chosen = Prefs.ENGINES[ei];
                     prefs.setEngine(chosen);
+                    updateBrand();
                     String why = Budget.blocked(prefs, chosen);
                     if (prefs.keyOf(chosen).isEmpty()) {
                         addLog("sys", Prefs.ENGINE_SPOKEN[ei] + "を使うには、「AIごとの設定」でAPIキーを入れてください。");
