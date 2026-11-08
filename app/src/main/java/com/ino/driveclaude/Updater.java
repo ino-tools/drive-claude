@@ -73,16 +73,32 @@ final class Updater {
 
     /** ダウンロードしながらインストーラーに渡す。完了すると確認画面が出る。 */
     static void downloadAndInstall(Context c, Info info, Progress cb) throws Exception {
-        HttpURLConnection h = (HttpURLConnection) new URL(info.url).openConnection();
+        HttpURLConnection h = null;
+        int code = 0;
+        for (int i = 0; i < 4; i++) {
+            try {
+                if (h != null) h.disconnect();
+                h = (HttpURLConnection) new URL(info.url).openConnection();
+                h.setConnectTimeout(15000);
+                h.setReadTimeout(60000);
+                code = h.getResponseCode();
+                if (code == 200) break;
+            } catch (java.io.IOException e) {
+                code = -1;
+            }
+            if (code != -1 && code < 500 && code != 429) break;
+            try { Thread.sleep(2000L * (i + 1)); } catch (InterruptedException ignored) { }
+        }
+        if (code != 200) {
+            if (h != null) h.disconnect();
+            throw new Exception("ダウンロードできませんでした（" + code + "）。少し待ってからもう一度タップしてください");
+        }
         PackageInstaller pi = c.getPackageManager().getPackageInstaller();
         PackageInstaller.SessionParams sp = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         sp.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
         int id = pi.createSession(sp);
         PackageInstaller.Session s = pi.openSession(id);
         try {
-            h.setConnectTimeout(15000);
-            h.setReadTimeout(60000);
-            if (h.getResponseCode() != 200) throw new Exception("ダウンロードできませんでした（" + h.getResponseCode() + "）");
             long total = info.size > 0 ? info.size : h.getContentLengthLong();
             try (InputStream in = h.getInputStream(); OutputStream os = s.openWrite("drive-claude.apk", 0, total > 0 ? total : -1)) {
                 byte[] buf = new byte[16384];
