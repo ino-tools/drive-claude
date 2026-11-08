@@ -67,6 +67,7 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         super.onResume();
         VoiceService.ui = this;
         updateBrand();
+        if (newer == null && orb != null) checkUpdate();
         logBox.removeAllViews();
         List<String[]> copy;
         synchronized (VoiceService.logBuf) { copy = new ArrayList<>(VoiceService.logBuf); }
@@ -130,10 +131,12 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44));
         nlp.rightMargin = dp(8);
         header.addView(notes, nlp);
-        Button settings = flatButton("⚙ 設定");
-        settings.setTextSize(15);
+        Button settings = flatButton("⚙");
+        settings.setTextSize(22);
+        settings.setPadding(0, 0, 0, 0);
+        settings.setContentDescription("設定");
         settings.setOnClickListener(v -> showSettings());
-        header.addView(settings, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)));
+        header.addView(settings, new LinearLayout.LayoutParams(dp(48), dp(44)));
         root.addView(header);
 
         // 新しい版のお知らせ（ボタン1つで更新）
@@ -219,6 +222,13 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1);
         llp.topMargin = dp(12);
         root.addView(logScroll, llp);
+
+        TextView ver = new TextView(this);
+        ver.setText("v" + versionName() + "（build " + Updater.current(this) + "）");
+        ver.setTextColor(C_SUB);
+        ver.setTextSize(11);
+        ver.setGravity(Gravity.CENTER);
+        root.addView(ver);
 
         setContentView(root);
     }
@@ -359,6 +369,10 @@ public class MainActivity extends Activity implements VoiceService.Ui {
     }
 
     // ---------- update ----------
+
+    private String versionName() {
+        try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return "?"; }
+    }
 
     private void checkUpdate() {
         new Thread(() -> {
