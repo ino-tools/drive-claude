@@ -602,6 +602,23 @@ public class MainActivity extends Activity implements VoiceService.Ui {
         olp.topMargin = dp(10);
         box.addView(overlay, olp);
 
+        Button fb = flatButton("💬 改善要望を送る");
+        fb.setTextSize(13);
+        fb.setOnClickListener(v -> {
+            String info = "\n\n----\nTalk to AI " + versionName() + " / Android " + android.os.Build.VERSION.RELEASE
+                    + " / " + android.os.Build.MODEL;
+            String url = "https://docs.google.com/forms/d/e/1FAIpQLSf9fdu2SEDHmJNRrY2qcY9y-LmP8V_webozq_zJ1qoKw9KRmw/viewform?usp=pp_url&entry.879997917="
+                    + android.net.Uri.encode(info);
+            try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))); } catch (Exception ignored) { }
+        });
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+        flp.topMargin = dp(10);
+        box.addView(fb, flp);
+        TextView fbn = new TextView(this);
+        fbn.setText("※ APIキーなどは書かないでください");
+        fbn.setTextSize(11);
+        box.addView(fbn);
+
         CheckBox web = new CheckBox(this);
         web.setText("Web検索を使う（Claude・Geminiのみ）");
         web.setTextColor(C_FG);
